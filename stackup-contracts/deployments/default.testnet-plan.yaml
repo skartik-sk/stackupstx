@@ -1,0 +1,32 @@
+---
+id: 0
+name: Testnet deployment
+network: testnet
+stacks-node: "https://api.testnet.hiro.so"
+bitcoin-node: "http://blockstack:blockstacksystem@bitcoind.testnet.stacks.co:18332"
+plan:
+  batches:
+    - id: 0
+      transactions:
+        - contract-publish:
+            contract-name: bounty-escrow
+            expected-sender: ST2Z0SKWX6JEAGAB51330CH4NB2RHDBVZME3DC18W
+            cost: 66654746
+            path: contracts/bounty-escrow.clar
+            anchor-block-only: true
+            clarity-version: 3
+        - contract-publish:
+            contract-name: milestone-escrow
+            expected-sender: ST2Z0SKWX6JEAGAB51330CH4NB2RHDBVZME3DC18W
+            cost: 66835089
+            path: contracts/milestone-escrow.clar
+            anchor-block-only: true
+            clarity-version: 3
+        - contract-publish:
+            contract-name: participate-stake
+            expected-sender: ST2Z0SKWX6JEAGAB51330CH4NB2RHDBVZME3DC18W
+            cost: 66799020
+            path: contracts/participate-stake.clar
+            anchor-block-only: true
+            clarity-version: 3
+      epoch: "3.2"

@@ -1,0 +1,63 @@
+# Ignore environment and secret files
+.env
+.env.*
+!.env.example
+
+# Node
+node_modules/
+dist/
+build/
+out/
+.next/
+.nuxt/
+.cache/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editors / IDEs
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+*.iml
+
+# Python (if any)
+__pycache__/
+*.py[cod]
+*.pyo
+venv/
+env/
+.envvenv/
+
+# Certificates / keys / creds
+*.pem
+*.key
+*.crt
+credentials/
+secrets.json
+
+# Build outputs / coverage
+coverage/
+*.local
+*.cache
+
+# Misc
+*.bak
+*.tmp
+*.old
+
+# Keep an example env in repo so others know required keys
+!env.example

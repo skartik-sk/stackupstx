@@ -1,0 +1,158 @@
+#################################################################
+#  DETAILED BUILD GUIDE: THE RESOLUTION LAYER
+#################################################################
+#
+#  This guide is a deep dive into building ONLY the dispute
+#  resolution feature for your Stacks platform. It covers the
+#  database models, backend API, frontend components, and
+#  smart contract modifications required.
+#
+#################################################################
+
+
+#===============================================================
+# CONCEPT & USER FLOW
+#===============================================================
+# 1. TRIGGER: A user (creator or contributor) is unsatisfied and clicks "Raise a Dispute" on a bounty page.
+# 2. ACTION: They fill out a form explaining the problem. A dispute case is officially opened.
+# 3. REVIEW: Both parties can view the case and add messages/evidence to a shared log.
+# 4. ARBITRATION: An admin/moderator reviews all the information in a special dashboard.
+# 5. RESOLUTION: The admin makes a final decision and triggers the smart contract to distribute the funds accordingly. The case is closed.
+
+
+#===============================================================
+# PHASE 1: BACKEND & DATABASE SETUP (The Foundation)
+#===============================================================
+# Goal: Create the database structure and API endpoints to manage dispute data.
+#---------------------------------------------------------------
+
+[ ] 1. **Define the Dispute Database Schema:**
+    - In your `backend` project, create a new file: `/models/dispute.model.ts`.
+    - Define the Mongoose schema with the following fields:
+      ```javascript
+      // dispute.model.ts
+      const disputeSchema = new mongoose.Schema({
+        bountyId: { type: mongoose.Schema.Types.ObjectId, ref: 'Bounty', required: true },
+        parties: [{ type: String, required: true }], // Array of Stacks addresses
+        status: {
+          type: String,
+          enum: ['open', 'under_review', 'resolved'],
+          default: 'open'
+        },
+        reason: { type: String, required: true },
+        evidence: [{ type: String }], // Array of URLs to uploaded evidence
+        chatLog: [{
+          senderAddress: String,
+          message: String,
+          timestamp: { type: Date, default: Date.now }
+        }],
+        resolution: { // To be filled in by the admin at the end
+          decision: String, // e.g., "Funds awarded to contributor"
+          notes: String,
+          resolvedBy: String // Admin's address
+        }
+      });
+      ```
+
+[ ] 2. **Create the Dispute API Endpoints:**
+    - In your Express routes file, add the following endpoints:
+    - `[ ]` **Create a Dispute:** `POST /api/disputes`
+        - Body: `{ bountyId, reason, initialMessage }`
+        - Action: Creates a new dispute document in the database. Finds the two parties (creator/contributor) from the bounty document and adds them to the `parties` array.
+    - `[ ]` **Get Dispute Details:** `GET /api/disputes/by-bounty/:bountyId`
+        - Action: Fetches the full dispute document for a specific bounty so the frontend can display it.
+    - `[ ]` **Add a Message:** `POST /api/disputes/:disputeId/message`
+        - Body: `{ senderAddress, message }`
+        - Action: Adds a new message object to the `chatLog` array for that dispute.
+    - `[ ]` **Resolve a Dispute (Admin Only):** `PUT /api/disputes/:disputeId/resolve`
+        - This endpoint must be protected to ensure only an admin can call it.
+        - Body: `{ decision, notes, resolvedBy }`
+        - Action: Updates the dispute's `status` to `resolved` and fills in the `resolution` object with the final decision.
+
+
+#===============================================================
+# PHASE 2: FRONTEND UI/UX (The User Interface)
+#===============================================================
+# Goal: Build the user-facing components for raising and managing disputes.
+#---------------------------------------------------------------
+
+[ ] 1. **Modify the Bounty Detail Page (`/bounties/[id]/page.tsx`):**
+    - `[ ]` Add a "Raise a Dispute" `Button` component.
+    - `[ ]` Use conditional logic to only show this button if the bounty status is appropriate (e.g., `in_progress` or `awaiting_review`).
+
+[ ] 2. **Create the Dispute Form Component (`/components/DisputeForm.tsx`):**
+    - `[ ]` This component will be shown in a `Modal`.
+    - `[ ]` Include a dropdown for `reason` and a textarea for the initial message.
+    - `[ ]` On form submission, call the `POST /api/disputes` endpoint.
+    - `[ ]` After successful submission, close the modal and refresh the bounty page data.
+
+[ ] 3. **Create the Dispute Status Component (`/components/DisputeStatus.tsx`):**
+    - `[ ]` This component will be displayed on the bounty page *after* a dispute has been opened.
+    - `[ ]` It will fetch data from the `GET /api/disputes/by-bounty/:bountyId` endpoint.
+    - `[ ]` Display the current dispute `status` (e.g., "Status: Under Review").
+    - `[ ]` Render the `chatLog` as a simple, read-only chat history.
+    - `[ ]` Include a small form (a text input and a "Send" button) at the bottom for users to add new messages. This form will call `POST /api/disputes/:disputeId/message`.
+
+[ ] 4. **Create the Admin Review Dashboard (`/app/admin/page.tsx`):**
+    - `[ ]` This page must be a protected route, accessible only by admin wallets.
+    - `[ ]` Fetch all disputes where `status` is `open` or `under_review`.
+    - `[ ]` Display them as a list. Clicking one opens a detailed view showing all evidence and the full chat log.
+    - `[ ]` In the detailed view, create a "Final Resolution" form for the admin.
+    - `[ ]` This form will have fields for `decision` and `notes`. Submitting it will call the `PUT /api/disputes/:disputeId/resolve` endpoint.
+
+
+#===============================================================
+# PHASE 3: SMART CONTRACT MODIFICATION (The On-Chain Logic)
+#===============================================================
+# Goal: Update your escrow contract to allow an admin to manually resolve a dispute.
+#---------------------------------------------------------------
+
+[ ] 1. **Open your `bounty-escrow.clar` contract file:**
+
+[ ] 2. **Define an Administrator:**
+    - At the top of the contract, define a constant for the admin address. This makes it secure.
+    - `(define-constant ADMIN 'SP...YourAdminWalletAddress)`
+
+[ ] 3. **Create the `resolve-dispute` Function:**
+    - This new function will be the on-chain tool for the arbitrator.
+    - ```clarity
+      ;; Manual resolution function for admins
+      (define-public (resolve-dispute (bounty-id uint) (payout-to-winner uint) (payout-to-creator uint) (winner-addr principal) (creator-addr principal))
+        (begin
+          ;; 1. Check if the caller is the admin
+          (asserts! (is-eq tx-sender ADMIN) (err "err-not-authorized"))
+
+          ;; 2. Get the bounty details from the map
+          (let ((bounty (unwrap! (map-get? bounties bounty-id) (err "err-bounty-not-found"))))
+
+            ;; 3. Check if total payout matches the locked amount
+            (asserts! (is-eq (+ payout-to-winner payout-to-creator) (get amount bounty)) (err "err-payout-mismatch"))
+
+            ;; 4. Perform the transfers based on the admin's decision
+            (if (> payout-to-winner u0) (try! (stx-transfer? payout-to-winner tx-sender winner-addr)))
+            (if (> payout-to-creator u0) (try! (stx-transfer? payout-to-creator tx-sender creator-addr)))
+
+            ;; 5. Update the bounty status to resolved
+            (map-set bounties bounty-id (merge bounty { status: "resolved-by-admin" }))
+
+            (ok true)
+          )
+        )
+      )
+      ```
+
+#===============================================================
+# PHASE 4: FULL INTEGRATION (Connecting the Dots)
+#===============================================================
+# Goal: Ensure the admin's off-chain decision correctly triggers the on-chain action.
+#---------------------------------------------------------------
+
+[ ] 1. **Implement the Final Admin Action Flow on the Admin Dashboard:**
+    - After the admin submits the "Final Resolution" form:
+    - **Step A (Off-chain):** The form submission successfully calls `PUT /api/disputes/:disputeId/resolve` and the database is updated.
+    - **Step B (On-chain):** After the backend confirms success, the frontend now prompts the admin. It uses `@stacks/connect` to create a transaction pop-up that calls the `resolve-dispute` function on your smart contract. The parameters for the function (`payout-to-winner`, etc.) are taken from the resolution form the admin just filled out.
+    - The admin signs, and the funds are moved on-chain. The dispute is officially over.
+
+#################################################################
+#  END OF RESOLUTION LAYER GUIDE
+#################################################################
