@@ -1,0 +1,20 @@
+# Don't ignore these important files
+!src/
+!src/components/
+!src/components/ui/
+!src/components/ui/*.tsx
+!src/lib/
+!src/app/
+!tailwind.css
+!postcss.config.mjs
+!next.config.js
+!tsconfig.json
+!package.json
+
+# Standard ignores
+node_modules/
+.next/
+.git/
+*.log
+.env.local
+.DS_Store

@@ -4,6 +4,16 @@
   "outputDirectory": ".next",
   "framework": "nextjs",
   "installCommand": "npm ci --legacy-peer-deps",
+  "functions": {
+    "src/app/**": {
+      "maxDuration": 30
+    }
+  },
+  "build": {
+    "env": {
+      "NODE_OPTIONS": "--max-old-space-size=4096"
+    }
+  },
   "env": {
     "NEXT_PUBLIC_STACKS_NETWORK": "testnet",
     "NEXT_PUBLIC_STACKS_API_URL": "https://api.testnet.hiro.so",
