@@ -1,0 +1,13 @@
+{
+  "version": 2,
+  "buildCommand": "npm run build",
+  "outputDirectory": ".next",
+  "framework": "nextjs",
+  "env": {
+    "NEXT_PUBLIC_STACKS_NETWORK": "testnet",
+    "NEXT_PUBLIC_STACKS_API_URL": "https://api.testnet.hiro.so",
+    "NEXT_PUBLIC_BOUNTY_CONTRACT": "ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM.bounty-escrow",
+    "NEXT_PUBLIC_MILESTONE_CONTRACT": "ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM.milestone-escrow",
+    "NEXT_PUBLIC_PARTICIPATE_CONTRACT": "ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM.participate-stake"
+  }
+}

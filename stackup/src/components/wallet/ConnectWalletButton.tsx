@@ -11,13 +11,25 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { useStacks } from '@/providers/StacksProvider'
-import { formatStx, microStxToStx } from '@/lib/contracts'
 import { Wallet, LogOut, Copy, ExternalLink } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'react-hot-toast'
 
+// Simple utility functions
+const microStxToStx = (microStx: number): number => {
+  return microStx / 1_000_000;
+};
+
+const formatStxAmount = (microStx: number): string => {
+  const stx = microStxToStx(microStx);
+  return `${stx.toLocaleString(undefined, { 
+    minimumFractionDigits: 0, 
+    maximumFractionDigits: 6 
+  })} STX`;
+};
+
 export function ConnectWalletButton() {
-  const { account, isConnected, isConnecting, connect, disconnect } = useStacks()
+  const { account, isConnected, connect, disconnect } = useStacks()
 
   const copyAddress = () => {
     if (account?.address) {
@@ -45,7 +57,7 @@ export function ConnectWalletButton() {
             <Wallet className="h-4 w-4" />
             {formatAddress(account.address)}
             <Badge variant="secondary">
-              {formatStx(account.balance)}
+              {formatStxAmount(account.balance || 0)}
             </Badge>
           </Button>
         </DialogTrigger>
@@ -91,7 +103,7 @@ export function ConnectWalletButton() {
                 <label className="text-sm font-medium text-gray-500">Balance</label>
                 <div className="mt-1">
                   <span className="text-2xl font-bold">
-                    {microStxToStx(account.balance).toLocaleString(undefined, {
+                    {microStxToStx(account.balance || 0).toLocaleString(undefined, {
                       minimumFractionDigits: 0,
                       maximumFractionDigits: 6,
                     })}
@@ -137,18 +149,18 @@ export function ConnectWalletButton() {
   return (
     <Button
       onClick={connect}
-      disabled={isConnecting}
+      disabled={false}
       className="gap-2"
     >
       <Wallet className="h-4 w-4" />
-      {isConnecting ? 'Connecting...' : 'Connect Wallet'}
+      Connect Wallet
     </Button>
   )
 }
 
 // Simplified version for mobile or compact spaces
 export function ConnectWalletCompact() {
-  const { account, isConnected, isConnecting, connect } = useStacks()
+  const { account, isConnected, connect } = useStacks()
 
   if (isConnected && account) {
     return (
@@ -163,12 +175,12 @@ export function ConnectWalletCompact() {
     <Button
       size="sm"
       onClick={connect}
-      disabled={isConnecting}
+      disabled={false}
       variant="outline"
       className="gap-1"
     >
       <Wallet className="h-3 w-3" />
-      {isConnecting ? 'Connecting...' : 'Connect'}
+      Connect
     </Button>
   )
 }

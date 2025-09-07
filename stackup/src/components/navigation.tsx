@@ -17,8 +17,12 @@ import { GlobalSearch } from "@/components/search/global-search"
 import { useStacks } from "@/providers/StacksProvider"
 import { useState } from "react"
 import { User, Settings, LogOut, BarChart3, Copy, Wallet } from "lucide-react"
-import { microStxToStx } from "@/lib/contracts"
 import { toast } from "react-hot-toast"
+
+// Simple utility function
+const microStxToStx = (microStx: number): number => {
+  return microStx / 1_000_000;
+};
 
 export function Navigation() {
   const [activeTab, setActiveTab] = useState("bounties")
@@ -105,7 +109,7 @@ export function Navigation() {
                       </p>
                       <div className="flex items-center space-x-1 pt-1">
                         <Badge variant="secondary" className="text-xs bg-[#fc6431]/10 text-[#fc6431]">
-                          {microStxToStx(account.balance).toFixed(2)} STX
+                          {microStxToStx(account.balance || 0).toFixed(2)} STX
                         </Badge>
                       </div>
                     </div>
