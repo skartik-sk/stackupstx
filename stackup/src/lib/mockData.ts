@@ -1,5 +1,4 @@
-// Simple mock data service for Vercel deployment (no backend dependencies)
-
+// Mock data service providing fallback data
 export interface Bounty {
   id: string;
   title: string;
@@ -123,24 +122,27 @@ export const mockProjects: Project[] = [
   }
 ];
 
-// Simple fetch functions that return mock data
+// Check if API is available (simplified)
 export const fetchBounties = async (): Promise<Bounty[]> => {
-  // Simulate API delay
+  // Return mock data for fallback scenarios
   await new Promise(resolve => setTimeout(resolve, 500));
   return mockBounties;
 };
 
 export const fetchGrants = async (): Promise<Grant[]> => {
+  // Return mock data for fallback scenarios
   await new Promise(resolve => setTimeout(resolve, 500));
   return mockGrants;
 };
 
 export const fetchIdeas = async (): Promise<Idea[]> => {
+  // Return mock data for fallback scenarios
   await new Promise(resolve => setTimeout(resolve, 500));
   return mockIdeas;
 };
 
 export const fetchProjects = async (): Promise<Project[]> => {
+  // Return mock data for fallback scenarios
   await new Promise(resolve => setTimeout(resolve, 500));
   return mockProjects;
 };

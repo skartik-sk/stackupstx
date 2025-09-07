@@ -1,261 +1,267 @@
 "use client"
 
 import { useState } from "react"
+import { useWallet } from "@/contexts/WalletContext"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Progress } from "@/components/ui/progress"
-import { CalendarDays, MapPin, LinkIcon, Github, Twitter, Award, Clock, CheckCircle } from "lucide-react"
+import { CalendarDays, UserIcon, Wallet, TrendingUp, Award, Target } from "lucide-react"
+import Link from "next/link"
 
 export default function ProfilePage() {
+  const { isAuthenticated, user, connectWallet } = useWallet()
   const [activeTab, setActiveTab] = useState("overview")
 
-  const userStats = {
-    totalApplications: 12,
-    acceptedApplications: 8,
-    completedProjects: 5,
-    totalEarnings: 15750,
-    reputation: 4.8,
-    monthlyLimit: 4,
-    usedThisMonth: 2,
+  // If wallet not connected, show connect prompt
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <Wallet className="h-16 w-16 mx-auto mb-4 text-[#fc6431]" />
+            <CardTitle>Connect Your Wallet</CardTitle>
+            <CardDescription>
+              Connect your Stacks wallet to view your profile and activity.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button 
+              onClick={connectWallet}
+              className="w-full bg-[#fc6431] hover:bg-[#e55a2b] text-white"
+            >
+              Connect Wallet
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
-
-  const recentActivity = [
-    { type: "bounty", title: "Smart Contract Audit", status: "completed", reward: 2500, date: "2 days ago" },
-    { type: "project", title: "DeFi Dashboard", status: "in-progress", reward: 8000, date: "1 week ago" },
-    { type: "grant", title: "Research Grant", status: "approved", reward: 5000, date: "2 weeks ago" },
-    { type: "idea", title: "NFT Marketplace Concept", status: "submitted", reward: 0, date: "3 weeks ago" },
-  ]
-
-  const skills = ["Smart Contracts", "React", "TypeScript", "Clarity", "DeFi", "Web3", "UI/UX", "Blockchain"]
-  const achievements = [
-    { title: "Top Contributor", description: "Completed 5+ projects", icon: Award },
-    { title: "Fast Delivery", description: "Average delivery time: 3 days", icon: Clock },
-    { title: "High Quality", description: "4.8/5 average rating", icon: CheckCircle },
-  ]
 
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8">
         {/* Profile Header */}
-        <Card className="mb-8">
-          <CardContent className="pt-6">
-            <div className="flex flex-col md:flex-row gap-6">
-              <div className="flex flex-col items-center md:items-start">
-                <Avatar className="w-24 h-24 mb-4">
-                  <AvatarImage src="/user-avatar.png" alt="Profile" />
-                  <AvatarFallback>JD</AvatarFallback>
-                </Avatar>
-                <div className="flex gap-2 mb-4">
-                  <Badge variant="secondary" className="bg-green-100 text-green-800">
-                    <Github className="w-3 h-3 mr-1" />
-                    Verified
-                  </Badge>
-                  <Badge variant="secondary" className="bg-blue-100 text-blue-800">
-                    <Twitter className="w-3 h-3 mr-1" />
-                    Verified
-                  </Badge>
+        <div className="flex flex-col md:flex-row gap-8 mb-8">
+          <div className="flex-shrink-0">
+            <Avatar className="h-32 w-32">
+              <AvatarImage src={user?.profileData?.avatar} alt="Profile" />
+              <AvatarFallback className="text-2xl bg-[#fc6431] text-white">
+                <UserIcon className="h-16 w-16" />
+              </AvatarFallback>
+            </Avatar>
+          </div>
+
+          <div className="flex-1">
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <h1 className="text-3xl font-bold mb-2">
+                  {user?.profileData?.name || user?.username || 'Stacks User'}
+                </h1>
+                <p className="text-muted-foreground mb-2">
+                  {user?.profileData?.bio || 'Welcome to StackUp! Complete your profile to get started.'}
+                </p>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <CalendarDays className="h-4 w-4" />
+                  Member since {new Date(user?.createdAt || Date.now()).toLocaleDateString()}
                 </div>
               </div>
-
-              <div className="flex-1">
-                <div className="flex flex-col md:flex-row md:items-start md:justify-between mb-4">
-                  <div>
-                    <h1 className="text-3xl font-bold mb-2">John Developer</h1>
-                    <p className="text-muted-foreground mb-2">Full-stack developer specializing in Stacks ecosystem</p>
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground mb-4">
-                      <div className="flex items-center gap-1">
-                        <MapPin className="w-4 h-4" />
-                        San Francisco, CA
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <CalendarDays className="w-4 h-4" />
-                        Joined March 2024
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <LinkIcon className="w-4 h-4" />
-                        johndeveloper.dev
-                      </div>
-                    </div>
-                  </div>
-                  <Button>Edit Profile</Button>
-                </div>
-
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-primary">{userStats.totalApplications}</div>
-                    <div className="text-sm text-muted-foreground">Applications</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-green-600">{userStats.completedProjects}</div>
-                    <div className="text-sm text-muted-foreground">Completed</div>
-                  </div>
-                  <div className="text-2xl font-bold text-center">
-                    <div className="text-primary">{userStats.totalEarnings.toLocaleString()} STX</div>
-                    <div className="text-sm text-muted-foreground">Total Earned</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-yellow-600">{userStats.reputation}/5</div>
-                    <div className="text-sm text-muted-foreground">Rating</div>
-                  </div>
-                </div>
-              </div>
+              <Link href="/settings">
+                <Button variant="outline">Edit Profile</Button>
+              </Link>
             </div>
-          </CardContent>
-        </Card>
 
-        {/* Monthly Usage */}
-        <Card className="mb-8">
-          <CardHeader>
-            <CardTitle>Monthly Application Limit</CardTitle>
-            <CardDescription>
-              You've used {userStats.usedThisMonth} of {userStats.monthlyLimit} free applications this month
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Progress value={(userStats.usedThisMonth / userStats.monthlyLimit) * 100} className="mb-2" />
-            <p className="text-sm text-muted-foreground">
-              {userStats.monthlyLimit - userStats.usedThisMonth} applications remaining
-            </p>
-          </CardContent>
-        </Card>
+            {/* Wallet Address */}
+            <div className="mb-4">
+              <Badge variant="secondary" className="font-mono">
+                {user?.stxAddress}
+              </Badge>
+            </div>
 
-        {/* Profile Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
+            {/* Skills */}
+            {user?.profileData?.skills && user.profileData.skills.length > 0 && (
+              <div className="mb-4">
+                <h3 className="text-sm font-medium mb-2">Skills</h3>
+                <div className="flex flex-wrap gap-2">
+                  {user.profileData.skills.map((skill) => (
+                    <Badge key={skill} variant="outline" className="text-xs">
+                      {skill}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center">
+                <TrendingUp className="h-8 w-8 text-[#fc6431]" />
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-muted-foreground">Stacker Score</p>
+                  <p className="text-2xl font-bold">{user?.stackerScore || 0}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center">
+                <Award className="h-8 w-8 text-[#fc6431]" />
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-muted-foreground">Total Earned</p>
+                  <p className="text-2xl font-bold">{user?.totalEarned || 0} STX</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center">
+                <Target className="h-8 w-8 text-[#fc6431]" />
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-muted-foreground">Completed Projects</p>
+                  <p className="text-2xl font-bold">{user?.completedProjects || 0}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center">
+                <UserIcon className="h-8 w-8 text-[#fc6431]" />
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-muted-foreground">Reputation</p>
+                  <p className="text-2xl font-bold">{user?.reputation || 0}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Activity Tabs */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="activity">Activity</TabsTrigger>
-            <TabsTrigger value="skills">Skills</TabsTrigger>
-            <TabsTrigger value="achievements">Achievements</TabsTrigger>
+            <TabsTrigger value="bounties">Bounties</TabsTrigger>
+            <TabsTrigger value="ideas">Ideas</TabsTrigger>
+            <TabsTrigger value="projects">Projects</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>About</CardTitle>
+                <CardTitle>Welcome to StackUp!</CardTitle>
+                <CardDescription>
+                  Your journey in the Stacks ecosystem starts here. Complete your profile and start participating in bounties, sharing ideas, and building projects.
+                </CardDescription>
               </CardHeader>
               <CardContent>
-                <p className="text-muted-foreground leading-relaxed">
-                  Experienced full-stack developer with 5+ years in blockchain development. Specialized in Stacks
-                  ecosystem, smart contracts, and DeFi applications. Passionate about building decentralized solutions
-                  that empower users and contribute to the Bitcoin economy.
-                </p>
-              </CardContent>
-            </Card>
-
-            <div className="grid md:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Recent Projects</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {recentActivity.slice(0, 3).map((activity, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
-                      <div>
-                        <h4 className="font-medium">{activity.title}</h4>
-                        <p className="text-sm text-muted-foreground">{activity.date}</p>
-                      </div>
-                      <Badge variant={activity.status === "completed" ? "default" : "secondary"}>
-                        {activity.status}
-                      </Badge>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Performance Metrics</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <span>Success Rate</span>
-                    <span className="font-medium">87%</span>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <Link href="/bounties">
+                      <Card className="cursor-pointer hover:shadow-md transition-shadow">
+                        <CardContent className="p-4">
+                          <h3 className="font-semibold mb-2">Explore Bounties</h3>
+                          <p className="text-sm text-muted-foreground">Find and complete bounties to earn STX tokens</p>
+                        </CardContent>
+                      </Card>
+                    </Link>
+                    
+                    <Link href="/ideas">
+                      <Card className="cursor-pointer hover:shadow-md transition-shadow">
+                        <CardContent className="p-4">
+                          <h3 className="font-semibold mb-2">Share Ideas</h3>
+                          <p className="text-sm text-muted-foreground">Submit innovative ideas and get community feedback</p>
+                        </CardContent>
+                      </Card>
+                    </Link>
+                    
+                    <Link href="/grants">
+                      <Card className="cursor-pointer hover:shadow-md transition-shadow">
+                        <CardContent className="p-4">
+                          <h3 className="font-semibold mb-2">Apply for Grants</h3>
+                          <p className="text-sm text-muted-foreground">Get funding for your research and projects</p>
+                        </CardContent>
+                      </Card>
+                    </Link>
+                    
+                    <Link href="/projects">
+                      <Card className="cursor-pointer hover:shadow-md transition-shadow">
+                        <CardContent className="p-4">
+                          <h3 className="font-semibold mb-2">View Projects</h3>
+                          <p className="text-sm text-muted-foreground">Discover and contribute to ongoing projects</p>
+                        </CardContent>
+                      </Card>
+                    </Link>
                   </div>
-                  <div className="flex justify-between items-center">
-                    <span>Avg. Delivery Time</span>
-                    <span className="font-medium">3.2 days</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span>Client Satisfaction</span>
-                    <span className="font-medium">4.8/5</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span>Response Time</span>
-                    <span className="font-medium">&lt; 2 hours</span>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="activity" className="space-y-4">
-            {recentActivity.map((activity, index) => (
-              <Card key={index}>
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div
-                        className={`w-3 h-3 rounded-full ${
-                          activity.status === "completed"
-                            ? "bg-green-500"
-                            : activity.status === "in-progress"
-                              ? "bg-blue-500"
-                              : activity.status === "approved"
-                                ? "bg-green-500"
-                                : "bg-gray-400"
-                        }`}
-                      />
-                      <div>
-                        <h4 className="font-medium">{activity.title}</h4>
-                        <p className="text-sm text-muted-foreground capitalize">{activity.type}</p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="font-medium">{activity.reward > 0 ? `${activity.reward} STX` : "Pending"}</div>
-                      <div className="text-sm text-muted-foreground">{activity.date}</div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </TabsContent>
-
-          <TabsContent value="skills" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Technical Skills</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-wrap gap-2">
-                  {skills.map((skill, index) => (
-                    <Badge key={index} variant="secondary" className="px-3 py-1">
-                      {skill}
-                    </Badge>
-                  ))}
                 </div>
               </CardContent>
             </Card>
           </TabsContent>
 
-          <TabsContent value="achievements" className="space-y-4">
-            {achievements.map((achievement, index) => (
-              <Card key={index}>
-                <CardContent className="pt-6">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
-                      <achievement.icon className="w-6 h-6 text-primary" />
-                    </div>
-                    <div>
-                      <h4 className="font-medium">{achievement.title}</h4>
-                      <p className="text-sm text-muted-foreground">{achievement.description}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+          <TabsContent value="bounties" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Your Bounties</CardTitle>
+                <CardDescription>Bounties you've created or applied to</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground">No bounties yet. Start by creating or applying to bounties!</p>
+                  <Link href="/bounties">
+                    <Button className="mt-4 bg-[#fc6431] hover:bg-[#e55a2b] text-white">
+                      Explore Bounties
+                    </Button>
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="ideas" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Your Ideas</CardTitle>
+                <CardDescription>Ideas you've submitted to the community</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground">No ideas submitted yet. Share your innovative ideas with the community!</p>
+                  <Link href="/create/idea">
+                    <Button className="mt-4 bg-[#fc6431] hover:bg-[#e55a2b] text-white">
+                      Submit an Idea
+                    </Button>
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="projects" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Your Projects</CardTitle>
+                <CardDescription>Projects you're working on or have contributed to</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground">No projects yet. Start contributing to existing projects or create your own!</p>
+                  <Link href="/projects">
+                    <Button className="mt-4 bg-[#fc6431] hover:bg-[#e55a2b] text-white">
+                      View Projects
+                    </Button>
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </div>

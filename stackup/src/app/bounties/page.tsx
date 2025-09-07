@@ -1,100 +1,112 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Navigation } from "@/components/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useStacks } from '@/providers/StacksProvider';
+import { useWallet } from '@/contexts/WalletContext';
 import Link from 'next/link';
-import { Search, DollarSign, Calendar, User, Target } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { Search, Calendar, User, Target } from 'lucide-react';
+import { toast } from 'react-hot-toast';
 
-// Mock data for bounties (no backend dependency)
-const mockBounties = [
-  {
-    id: '1',
-    title: 'Smart Contract Security Audit',
-    description: 'Conduct a comprehensive security audit of our DeFi smart contracts. We need an experienced auditor to review our codebase for vulnerabilities.',
-    amount: 5000,
-    creator: 'SP2J6ZY48GV1EZ5V2V5RB9MP66SW86PYKKNRV9EJ7',
-    deadline: '2024-12-31',
-    status: 'open' as const,
-    category: 'Security',
-    skills: ['Solidity', 'Security Auditing', 'Smart Contracts'],
-    applicants: 12,
-    createdAt: '2024-11-01'
-  },
-  {
-    id: '2',
-    title: 'Frontend React Development',
-    description: 'Build a modern, responsive frontend for a Stacks-based DeFi application. Requires experience with React, TypeScript, and Web3.',
-    amount: 3000,
-    creator: 'SP3K8BC0PPEVCV7NZ6QSRWPQ2JE9E5B6N3PA0KBR9',
-    deadline: '2024-11-30',
-    status: 'open' as const,
-    category: 'Development',
-    skills: ['React', 'TypeScript', 'Web3'],
-    applicants: 8,
-    createdAt: '2024-10-15'
-  },
-  {
-    id: '3',
-    title: 'Blockchain Data Analytics',
-    description: 'Create analytics dashboard for tracking DeFi protocol metrics. Need expertise in data visualization and blockchain data.',
-    amount: 2500,
-    creator: 'SP1HTBVD3JG9C05J7HBJTHGR0GGW7KX6JS75K9R02',
-    deadline: '2024-12-15',
-    status: 'assigned' as const,
-    category: 'Analytics',
-    skills: ['Data Analysis', 'Python', 'Blockchain'],
-    applicants: 15,
-    createdAt: '2024-10-20'
-  }
-];
+interface Bounty {
+  _id: string;
+  title: string;
+  description: string;
+  amount: number;
+  status: string;
+  creator: string;
+  createdAt: string;
+  deadline: string;
+  skills: string[];
+  applicants?: any[];
+}
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://stackup-backend-4a2z9lasp-singupalli-kartiks-projects.vercel.app';
 
 export default function BountiesPage() {
-  const [bounties, setBounties] = useState(mockBounties);
-  const [loading, setLoading] = useState(false);
   const [filter, setFilter] = useState<'all' | 'open' | 'assigned' | 'in-progress' | 'completed' | 'cancelled'>('all');
   const [searchTerm, setSearchTerm] = useState('');
-  const [applyingTo, setApplyingTo] = useState<string | null>(null);
+  const [bounties, setBounties] = useState<Bounty[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [applying, setApplying] = useState<string | null>(null);
   
-  const { isConnected, account } = useStacks();
+  const { isAuthenticated, user } = useWallet();
+
+  // Fetch bounties from backend
+  const fetchBounties = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const queryParams = new URLSearchParams();
+      if (filter !== 'all') queryParams.append('status', filter);
+      if (searchTerm) queryParams.append('search', searchTerm);
+      
+      const response = await fetch(`${API_BASE_URL}/api/bounties?${queryParams}`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      setBounties(data.data || []);
+    } catch (error) {
+      console.error('Error fetching bounties:', error);
+      setError('Failed to load bounties. Please try again.');
+      // Fallback to empty array
+      setBounties([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchBounties();
+  }, [filter, searchTerm]);
 
   const handleApplyToBounty = async (bountyId: string) => {
-    if (!isConnected || !account) {
+    if (!isAuthenticated || !user) {
       toast.error('Please connect your wallet first');
       return;
     }
 
-    setApplyingTo(bountyId);
     try {
-      // Simulate application process
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      toast.success('Application submitted successfully!');
+      setApplying(bountyId);
       
-      // Update local state to show application
-      setBounties(prev => prev.map(bounty => 
-        bounty.id === bountyId 
-          ? { ...bounty, applicants: bounty.applicants + 1 }
-          : bounty
-      ));
+      const response = await fetch(`${API_BASE_URL}/api/bounties/${bountyId}/apply`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          address: user.stxAddress,
+          proposal: 'Application submitted via UI',
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to apply to bounty');
+      }
+
+      toast.success('Applied to bounty successfully!');
+      fetchBounties(); // Refresh the list
     } catch (error) {
       console.error('Error applying to bounty:', error);
-      toast.error('Failed to submit application');
+      toast.error('Failed to apply to bounty. Please try again.');
     } finally {
-      setApplyingTo(null);
+      setApplying(null);
     }
   };
 
+  // Filter bounties locally for search
   const filteredBounties = bounties.filter(bounty => {
-    const matchesFilter = filter === 'all' || bounty.status === filter;
-    const matchesSearch = !searchTerm || 
-      bounty.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      bounty.description.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesFilter && matchesSearch;
+    if (!searchTerm) return true;
+    return bounty.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+           bounty.description.toLowerCase().includes(searchTerm.toLowerCase());
   });
 
   const getStatusColor = (status: string) => {
@@ -115,7 +127,24 @@ export default function BountiesPage() {
         <div className="flex items-center justify-center min-h-[70vh]">
           <div className="text-center">
             <div className="animate-spin rounded-full h-32 w-32 border-4 border-gray-200 border-t-[#fc6431] mx-auto"></div>
-            <p className="mt-6 text-gray-600 font-medium">Loading bounties...</p>
+            <p className="mt-6 text-gray-600 font-medium">Loading bounties from backend...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navigation />
+        <div className="flex items-center justify-center min-h-[70vh]">
+          <div className="text-center">
+            <div className="text-red-500 text-lg font-semibold mb-4">Error loading bounties</div>
+            <p className="text-gray-600 mb-4">{error}</p>
+            <Button onClick={fetchBounties} className="bg-[#fc6431] hover:bg-[#e55a2b] text-white">
+              Try Again
+            </Button>
           </div>
         </div>
       </div>
@@ -139,9 +168,11 @@ export default function BountiesPage() {
                 Discover and complete bounties to earn rewards in the Stacks ecosystem
               </p>
             </div>
-            <Button className="bg-[#fc6431] hover:bg-[#e55a2b] text-white">
-              Create Bounty
-            </Button>
+            <Link href="/create/bounty">
+              <Button className="bg-[#fc6431] hover:bg-[#e55a2b] text-white">
+                Create Bounty
+              </Button>
+            </Link>
           </div>
 
           {/* Stats Bar */}
@@ -212,13 +243,13 @@ export default function BountiesPage() {
           <div className="lg:col-span-3">
             <div className="space-y-6">
               {filteredBounties.map((bounty) => (
-                <Card key={bounty.id} className="hover:shadow-lg transition-shadow">
+                <Card key={bounty._id} className="hover:shadow-lg transition-shadow">
                   <CardHeader>
                     <div className="flex items-start justify-between">
                       <div className="space-y-2">
                         <div className="flex items-center gap-2">
                           <CardTitle className="text-xl hover:text-[#fc6431] transition-colors">
-                            <Link href={`/bounties/${bounty.id}`}>
+                            <Link href={`/bounties/${bounty._id}`}>
                               {bounty.title}
                             </Link>
                           </CardTitle>
@@ -260,28 +291,28 @@ export default function BountiesPage() {
                         </div>
                         <div className="flex items-center gap-1">
                           <Target className="h-4 w-4" />
-                          <span>{bounty.applicants} applicants</span>
+                          <span>{bounty.applicants?.length || 0} applicants</span>
                         </div>
                       </div>
                     </div>
                     
                     <div className="pt-4 border-t border-gray-100 flex gap-2">
                       <Button asChild size="sm" variant="outline" className="flex-1">
-                        <Link href={`/bounties/${bounty.id}`}>
+                        <Link href={`/bounties/${bounty._id}`}>
                           View Details
                         </Link>
                       </Button>
-                      {bounty.status === 'open' && isConnected && account?.address !== bounty.creator && (
+                      {bounty.status === 'open' && isAuthenticated && user?.stxAddress !== bounty.creator && (
                         <Button
                           size="sm"
-                          onClick={() => handleApplyToBounty(bounty.id)}
-                          disabled={applyingTo === bounty.id}
+                          onClick={() => handleApplyToBounty(bounty._id)}
+                          disabled={applying === bounty._id}
                           className="flex-1 bg-[#fc6431] hover:bg-[#e55a2b] text-white"
                         >
-                          {applyingTo === bounty.id ? 'Applying...' : 'Apply'}
+                          {applying === bounty._id ? 'Applying...' : 'Apply'}
                         </Button>
                       )}
-                      {!isConnected && bounty.status === 'open' && (
+                      {!isAuthenticated && bounty.status === 'open' && (
                         <Button size="sm" variant="outline" className="flex-1" disabled>
                           Connect Wallet to Apply
                         </Button>
@@ -316,3 +347,4 @@ export default function BountiesPage() {
     </div>
   );
 }
+

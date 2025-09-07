@@ -4,9 +4,17 @@ export const connectDatabase = async (): Promise<void> => {
   try {
     const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/stackup-dev'
     
-    await mongoose.connect(mongoUri, {
-      dbName: 'stackup'
-    })
+    // MongoDB connection options with proper SSL handling
+    const options = {
+      dbName: 'stackup',
+      ssl: true,
+      retryWrites: true,
+      connectTimeoutMS: 10000,
+      socketTimeoutMS: 45000,
+      serverSelectionTimeoutMS: 5000,
+    }
+    
+    await mongoose.connect(mongoUri, options)
     
     console.log(`📦 MongoDB connected: ${mongoose.connection.host}`)
   } catch (error) {

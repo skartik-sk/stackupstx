@@ -11,8 +11,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
-import { ArrowLeft, Building, DollarSign, Calendar, Award } from "lucide-react"
+import { ArrowLeft, Building, DollarSign, Calendar, Award, Wallet } from "lucide-react"
 import Link from "next/link"
+import { useWallet } from "@/contexts/WalletContext"
+import { toast } from "react-hot-toast"
+import { useRouter } from "next/navigation"
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://stackup-backend-4a2z9lasp-singupalli-kartiks-projects.vercel.app';
 
 const grantTypeOptions = [
   { value: "research", label: "Research Grant", description: "For academic research and studies" },
@@ -49,6 +54,10 @@ const eligibilityOptions = [
 ]
 
 export default function CreateGrantPage() {
+  const { isAuthenticated, user, connectWallet } = useWallet()
+  const router = useRouter()
+  const [creating, setCreating] = useState(false)
+
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -92,9 +101,60 @@ export default function CreateGrantPage() {
     }))
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    console.log("Grant created:", formData)
+    
+    if (!isAuthenticated || !user) {
+      toast.error('Please connect your wallet first')
+      return
+    }
+
+    try {
+      setCreating(true)
+      
+      const grantData = {
+        title: formData.title,
+        description: formData.description,
+        amount: Number(formData.amount),
+        organization: formData.organizationName,
+        deadline: formData.applicationDeadline,
+        status: 'open' as const,
+        category: formData.grantType,
+        requirements: [formData.requirements, ...formData.eligibility],
+        creatorAddress: user.stxAddress,
+        focusAreas: formData.focusAreas,
+        duration: formData.duration,
+        startDate: formData.startDate,
+        deliverables: formData.deliverables,
+        milestones: formData.milestones,
+        evaluationCriteria: formData.evaluationCriteria,
+        organizationDescription: formData.organizationDescription,
+        contactEmail: formData.contactEmail,
+        website: formData.website,
+        additionalInfo: formData.additionalInfo,
+      }
+
+      const response = await fetch(`${API_BASE_URL}/api/grants`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(grantData),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to create grant')
+      }
+
+      const newGrant = await response.json()
+      toast.success('Grant created successfully!')
+      router.push(`/grants/${newGrant._id}`)
+    } catch (error) {
+      console.error('Error creating grant:', error)
+      toast.error('Failed to create grant. Please try again.')
+    } finally {
+      setCreating(false)
+    }
   }
 
   const nextStep = () => setCurrentStep((prev) => Math.min(prev + 1, totalSteps))
@@ -148,6 +208,42 @@ export default function CreateGrantPage() {
         </div>
 
         <form onSubmit={handleSubmit} className="max-w-4xl">
+          {/* Wallet Connection Check */}
+          {!isAuthenticated && (
+            <Card className="mb-6 border-orange-200 bg-orange-50">
+              <CardContent className="p-6">
+                <div className="flex items-center gap-4">
+                  <Wallet className="h-8 w-8 text-orange-600" />
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-orange-800">Connect Your Wallet</h3>
+                    <p className="text-orange-700 text-sm">
+                      You need to connect your Stacks wallet to create a grant. Your wallet address will be used for grant management.
+                    </p>
+                  </div>
+                  <Button 
+                    onClick={connectWallet}
+                    className="bg-orange-600 hover:bg-orange-700 text-white"
+                  >
+                    Connect Wallet
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Connected Wallet Info */}
+          {isAuthenticated && user && (
+            <Card className="mb-6 border-green-200 bg-green-50">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                  <span className="text-green-800 text-sm font-medium">
+                    Connected as: {user.stxAddress}
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
+          )}
           {/* Step 1: Grant Details */}
           {currentStep === 1 && (
             <Card>
@@ -508,13 +604,17 @@ export default function CreateGrantPage() {
             </Button>
 
             {currentStep < totalSteps ? (
-              <Button type="button" onClick={nextStep}>
+              <Button type="button" onClick={nextStep} disabled={!isAuthenticated}>
                 Next
               </Button>
             ) : (
-              <Button type="submit" className="bg-primary hover:bg-primary/90">
+              <Button 
+                type="submit" 
+                className="bg-primary hover:bg-primary/90"
+                disabled={!isAuthenticated || creating}
+              >
                 <Award className="h-4 w-4 mr-2" />
-                Submit Grant for Review
+                {creating ? 'Creating Grant...' : 'Submit Grant for Review'}
               </Button>
             )}
           </div>

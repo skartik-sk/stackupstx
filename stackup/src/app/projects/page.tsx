@@ -6,22 +6,66 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { fetchProjects, Project } from '@/lib/mockData';
+import { useWallet } from '@/contexts/WalletContext';
 import Link from 'next/link';
 import { Search, Users, Calendar, DollarSign, TrendingUp } from 'lucide-react';
+import { toast } from 'react-hot-toast';
+
+interface Project {
+  _id: string;
+  title: string;
+  description: string;
+  creator: string;
+  status: string;
+  tags: string[];
+  funding: number;
+  fundingGoal: number;
+  contributors: number;
+  createdAt: string;
+  category?: string;
+}
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://stackup-backend-4a2z9lasp-singupalli-kartiks-projects.vercel.app';
 
 export default function ProjectsPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<'all' | 'active' | 'completed' | 'planning'>('all');
   const [searchTerm, setSearchTerm] = useState('');
+  
+  const { isAuthenticated, user } = useWallet();
+
+  // Fetch projects from backend
+  const fetchProjects = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const queryParams = new URLSearchParams();
+      if (filter !== 'all') queryParams.append('status', filter);
+      if (searchTerm) queryParams.append('search', searchTerm);
+      
+      const response = await fetch(`${API_BASE_URL}/api/projects?${queryParams}`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      setProjects(data.data || []);
+    } catch (error) {
+      console.error('Error fetching projects:', error);
+      setError('Failed to load projects. Please try again.');
+      setProjects([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    fetchProjects().then(data => {
-      setProjects(data);
-      setLoading(false);
-    });
-  }, []);
+    fetchProjects();
+  }, [filter, searchTerm]);
 
   const filteredProjects = projects.filter(project => {
     const matchesFilter = filter === 'all' || project.status === filter;
@@ -47,7 +91,24 @@ export default function ProjectsPage() {
         <div className="flex items-center justify-center min-h-[70vh]">
           <div className="text-center">
             <div className="animate-spin rounded-full h-32 w-32 border-4 border-gray-200 border-t-[#fc6431] mx-auto"></div>
-            <p className="mt-6 text-gray-600 font-medium">Loading projects...</p>
+            <p className="mt-6 text-gray-600 font-medium">Loading projects from backend...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navigation />
+        <div className="flex items-center justify-center min-h-[70vh]">
+          <div className="text-center">
+            <div className="text-red-500 text-lg font-semibold mb-4">Error loading projects</div>
+            <p className="text-gray-600 mb-4">{error}</p>
+            <Button onClick={fetchProjects} className="bg-[#fc6431] hover:bg-[#e55a2b] text-white">
+              Try Again
+            </Button>
           </div>
         </div>
       </div>
@@ -57,6 +118,7 @@ export default function ProjectsPage() {
   const totalFunding = projects.reduce((sum, project) => sum + project.fundingGoal, 0);
   const activeProjects = projects.filter(p => p.status === 'active').length;
   const completedProjects = projects.filter(p => p.status === 'completed').length;
+  const totalContributors = projects.reduce((sum, p) => sum + p.contributors, 0);
 
   return (
     <div className="min-h-screen bg-background">
@@ -71,9 +133,11 @@ export default function ProjectsPage() {
                 Discover innovative projects built on Stacks blockchain
               </p>
             </div>
-            <Button className="bg-[#fc6431] hover:bg-[#e55a2b] text-white">
-              Submit Project
-            </Button>
+            <Link href="/apply/project">
+              <Button className="bg-[#fc6431] hover:bg-[#e55a2b] text-white">
+                Submit Project
+              </Button>
+            </Link>
           </div>
 
           {/* Stats Bar */}
@@ -87,11 +151,11 @@ export default function ProjectsPage() {
               <div className="text-sm text-muted-foreground">Active Projects</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-[#fc6431]">{totalFunding.toLocaleString()} STX</div>
+              <div className="text-2xl font-bold text-[#fc6431]">{(totalFunding / 1000).toFixed(0)}K STX</div>
               <div className="text-sm text-muted-foreground">Total Funding</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-[#fc6431]">{projects.reduce((sum, p) => sum + p.contributors, 0)}</div>
+              <div className="text-2xl font-bold text-[#fc6431]">{totalContributors}</div>
               <div className="text-sm text-muted-foreground">Contributors</div>
             </div>
           </div>
@@ -144,13 +208,13 @@ export default function ProjectsPage() {
           <div className="lg:col-span-3">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {filteredProjects.map((project) => (
-                <Card key={project.id} className="hover:shadow-lg transition-shadow">
+                <Card key={project._id} className="hover:shadow-lg transition-shadow">
                   <CardHeader>
                     <div className="flex items-start justify-between">
                       <div className="space-y-2">
                         <div className="flex items-center gap-2">
                           <CardTitle className="text-lg hover:text-[#fc6431] transition-colors">
-                            <Link href={`/projects/${project.id}`}>
+                            <Link href={`/projects/${project._id}`}>
                               {project.title}
                             </Link>
                           </CardTitle>
@@ -183,13 +247,15 @@ export default function ProjectsPage() {
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-gray-600">Funding Progress</span>
                         <span className="font-semibold text-[#fc6431]">
-                          {Math.round((project.funding / project.fundingGoal) * 100)}%
+                          {project.fundingGoal > 0 ? Math.round((project.funding / project.fundingGoal) * 100) : 0}%
                         </span>
                       </div>
                       <div className="w-full bg-gray-200 rounded-full h-2">
                         <div 
                           className="bg-[#fc6431] h-2 rounded-full transition-all duration-300"
-                          style={{ width: `${Math.min((project.funding / project.fundingGoal) * 100, 100)}%` }}
+                          style={{ 
+                            width: `${project.fundingGoal > 0 ? Math.min((project.funding / project.fundingGoal) * 100, 100) : 0}%` 
+                          }}
                         ></div>
                       </div>
                       <div className="flex items-center justify-between text-sm text-gray-500">
@@ -211,11 +277,11 @@ export default function ProjectsPage() {
 
                     <div className="pt-2 border-t border-gray-100">
                       <div className="flex items-center justify-between text-sm text-gray-500 mb-3">
-                        <span>By {project.creator}</span>
+                        <span>By {project.creator.slice(0, 8)}...</span>
                       </div>
                       
                       <Button asChild className="w-full bg-[#fc6431] hover:bg-[#e55a2b] text-white">
-                        <Link href={`/projects/${project.id}`}>
+                        <Link href={`/projects/${project._id}`}>
                           View Project
                         </Link>
                       </Button>

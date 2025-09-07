@@ -52,9 +52,84 @@ interface InMemoryBounty {
   updatedAt: Date
 }
 
+interface InMemoryGrant {
+  id: string
+  title: string
+  description: string
+  creatorAddress: string
+  fundingGoal: number
+  currentFunding: number
+  status: 'open' | 'funded' | 'in_progress' | 'completed' | 'cancelled'
+  deadline?: Date
+  category: string
+  skills: string[]
+  milestones: Array<{
+    title: string
+    description: string
+    amount: number
+    completed: boolean
+    completedAt?: Date
+  }>
+  supporters: Array<{
+    address: string
+    amount: number
+    supportedAt: Date
+  }>
+  applications: Array<{
+    applicantAddress: string
+    proposal: string
+    appliedAt: Date
+    status: 'pending' | 'accepted' | 'rejected'
+  }>
+  metadata: {
+    category: string
+    difficulty: 'beginner' | 'intermediate' | 'advanced'
+    estimatedTime: string
+    tags: string[]
+    requirements: string[]
+  }
+  createdAt: Date
+  updatedAt: Date
+}
+
+interface InMemoryIdea {
+  id: string
+  title: string
+  description: string
+  creatorAddress: string
+  status: 'draft' | 'published' | 'in_development' | 'completed' | 'archived'
+  category: string
+  tags: string[]
+  upvotes: string[]
+  downvotes: string[]
+  comments: Array<{
+    authorAddress: string
+    content: string
+    createdAt: Date
+  }>
+  collaborators: Array<{
+    address: string
+    role: string
+    joinedAt: Date
+  }>
+  metadata: {
+    difficulty: 'beginner' | 'intermediate' | 'advanced'
+    estimatedTime: string
+    requiredSkills: string[]
+    marketPotential: 'low' | 'medium' | 'high'
+    feasibility: 'low' | 'medium' | 'high'
+  }
+  viewCount: number
+  featured: boolean
+  createdAt: Date
+  updatedAt: Date
+}
+
 class InMemoryDatabase {
   private users: Map<string, InMemoryUser> = new Map()
   private bounties: Map<string, InMemoryBounty> = new Map()
+  private grants: Map<string, InMemoryGrant> = new Map()
+  private ideas: Map<string, InMemoryIdea> = new Map()
 
   // User methods
   async createUser(userData: Partial<InMemoryUser>): Promise<InMemoryUser> {
@@ -136,6 +211,62 @@ class InMemoryDatabase {
     return updatedBounty
   }
 
+  // Grant methods
+  async createGrant(grantData: Omit<InMemoryGrant, 'id' | 'createdAt' | 'updatedAt'>): Promise<InMemoryGrant> {
+    const id = Date.now().toString()
+    const grant: InMemoryGrant = {
+      id,
+      ...grantData,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    }
+    
+    this.grants.set(id, grant)
+    return grant
+  }
+
+  async findGrantById(id: string): Promise<InMemoryGrant | null> {
+    return this.grants.get(id) || null
+  }
+
+  async findGrants(filter: any = {}): Promise<InMemoryGrant[]> {
+    const grants = Array.from(this.grants.values())
+    
+    return grants.filter(grant => {
+      if (filter.status && grant.status !== filter.status) return false
+      if (filter.category && grant.category !== filter.category) return false
+      return true
+    })
+  }
+
+  // Idea methods
+  async createIdea(ideaData: Omit<InMemoryIdea, 'id' | 'createdAt' | 'updatedAt'>): Promise<InMemoryIdea> {
+    const id = Date.now().toString()
+    const idea: InMemoryIdea = {
+      id,
+      ...ideaData,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    }
+    
+    this.ideas.set(id, idea)
+    return idea
+  }
+
+  async findIdeaById(id: string): Promise<InMemoryIdea | null> {
+    return this.ideas.get(id) || null
+  }
+
+  async findIdeas(filter: any = {}): Promise<InMemoryIdea[]> {
+    const ideas = Array.from(this.ideas.values())
+    
+    return ideas.filter(idea => {
+      if (filter.status && idea.status !== filter.status) return false
+      if (filter.category && idea.category !== filter.category) return false
+      return true
+    })
+  }
+
   // Initialize with sample data
   async initialize() {
     // Sample users
@@ -194,6 +325,116 @@ class InMemoryDatabase {
         difficulty: 'advanced',
         estimatedHours: 25
       }
+    })
+
+    // Sample grants
+    await this.createGrant({
+      title: 'Open Source Stacks Development Tools',
+      description: 'Develop a comprehensive suite of development tools for Stacks blockchain including IDE extensions, testing frameworks, and deployment tools.',
+      creatorAddress: 'ST1HTBVD3JG9C05J7HBJTHGR0GGW7KXW28M5JS8QE',
+      fundingGoal: 200000000, // 200 STX
+      currentFunding: 50000000, // 50 STX raised
+      status: 'open',
+      deadline: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000), // 60 days
+      category: 'Development Tools',
+      skills: ['TypeScript', 'VSCode Extensions', 'Testing'],
+      milestones: [
+        {
+          title: 'IDE Extension Development',
+          description: 'Create VSCode extension for Clarity development',
+          amount: 75000000,
+          completed: false
+        },
+        {
+          title: 'Testing Framework',
+          description: 'Build comprehensive testing framework',
+          amount: 75000000,
+          completed: false
+        },
+        {
+          title: 'Deployment Tools',
+          description: 'Create deployment and monitoring tools',
+          amount: 50000000,
+          completed: false
+        }
+      ],
+      supporters: [
+        {
+          address: 'ST2REHHS5J3CERCRBEPMGH7921Q6PYKAADT7JP2VB',
+          amount: 30000000,
+          supportedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000)
+        },
+        {
+          address: 'ST1HTBVD3JG9C05J7HBJTHGR0GGW7KXW28M5JS8QE',
+          amount: 20000000,
+          supportedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000)
+        }
+      ],
+      applications: [],
+      metadata: {
+        category: 'Development Tools',
+        difficulty: 'advanced',
+        estimatedTime: '3-4 months',
+        tags: ['tools', 'developer-experience', 'productivity'],
+        requirements: ['Experience with VSCode API', 'TypeScript expertise', 'Testing framework knowledge']
+      }
+    })
+
+    // Sample ideas
+    await this.createIdea({
+      title: 'Decentralized Knowledge Marketplace',
+      description: 'A platform where experts can monetize their knowledge by creating courses, tutorials, and consulting services using STX tokens. Students can purchase access and rate content.',
+      creatorAddress: 'ST1HTBVD3JG9C05J7HBJTHGR0GGW7KXW28M5JS8QE',
+      status: 'published',
+      category: 'Education',
+      tags: ['education', 'marketplace', 'monetization', 'knowledge-sharing'],
+      upvotes: ['ST2REHHS5J3CERCRBEPMGH7921Q6PYKAADT7JP2VB', 'ST1HTBVD3JG9C05J7HBJTHGR0GGW7KXW28M5JS8QE'],
+      downvotes: [],
+      comments: [
+        {
+          authorAddress: 'ST2REHHS5J3CERCRBEPMGH7921Q6PYKAADT7JP2VB',
+          content: 'This is a brilliant idea! I would love to see this implemented. The education sector needs more decentralized solutions.',
+          createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000)
+        }
+      ],
+      collaborators: [],
+      metadata: {
+        difficulty: 'intermediate',
+        estimatedTime: '4-6 months',
+        requiredSkills: ['Smart Contracts', 'Frontend Development', 'UX Design'],
+        marketPotential: 'high',
+        feasibility: 'high'
+      },
+      viewCount: 45,
+      featured: true
+    })
+
+    await this.createIdea({
+      title: 'Carbon Credit Trading on Stacks',
+      description: 'Create a transparent carbon credit marketplace using Clarity smart contracts. Companies can buy/sell verified carbon credits with full traceability.',
+      creatorAddress: 'ST2REHHS5J3CERCRBEPMGH7921Q6PYKAADT7JP2VB',
+      status: 'published',
+      category: 'Sustainability',
+      tags: ['carbon-credits', 'sustainability', 'trading', 'transparency'],
+      upvotes: ['ST1HTBVD3JG9C05J7HBJTHGR0GGW7KXW28M5JS8QE'],
+      downvotes: [],
+      comments: [],
+      collaborators: [
+        {
+          address: 'ST1HTBVD3JG9C05J7HBJTHGR0GGW7KXW28M5JS8QE',
+          role: 'Smart Contract Developer',
+          joinedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000)
+        }
+      ],
+      metadata: {
+        difficulty: 'advanced',
+        estimatedTime: '6-8 months',
+        requiredSkills: ['Clarity', 'Carbon Markets', 'Verification Systems'],
+        marketPotential: 'high',
+        feasibility: 'medium'
+      },
+      viewCount: 23,
+      featured: false
     })
 
     console.log('✅ In-memory database initialized with sample data')

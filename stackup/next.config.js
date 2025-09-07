@@ -23,6 +23,8 @@ const nextConfig = {
   transpilePackages: [],
   env: {
     CUSTOM_KEY: 'my-value',
+    NEXT_PUBLIC_API_BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL,
+    NEXT_PUBLIC_API_BASE_URL_FALLBACK: process.env.NEXT_PUBLIC_API_BASE_URL_FALLBACK,
   },
 };
 

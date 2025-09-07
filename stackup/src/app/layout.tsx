@@ -6,11 +6,12 @@ import { Analytics } from "@vercel/analytics/next"
 import { Suspense } from "react"
 import { AuthProvider } from "@/components/auth/auth-provider"
 import { StacksProvider } from "@/providers/StacksProvider"
+import { WalletProvider } from "@/contexts/WalletContext"
 import { Toaster } from "react-hot-toast"
 import "./globals.css"
 
 export const metadata: Metadata = {
-  title: "Stacks Ecosystem Hub",
+  title: "StackUp - Stacks Ecosystem Hub",
   description: "Boost the Stacks blockchain ecosystem with bounties, projects, grants, and innovative ideas",
   generator: "v0.app",
 }
@@ -23,21 +24,23 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable}`}>
-        <AuthProvider>
-          <StacksProvider>
-            <Suspense fallback={null}>{children}</Suspense>
-            <Toaster 
-              position="top-right"
-              toastOptions={{
-                duration: 4000,
-                style: {
-                  background: '#363636',
-                  color: '#fff',
-                },
-              }}
-            />
-          </StacksProvider>
-        </AuthProvider>
+        <WalletProvider>
+          <AuthProvider>
+            <StacksProvider>
+              <Suspense fallback={null}>{children}</Suspense>
+              <Toaster 
+                position="top-right"
+                toastOptions={{
+                  duration: 4000,
+                  style: {
+                    background: '#363636',
+                    color: '#fff',
+                  },
+                }}
+              />
+            </StacksProvider>
+          </AuthProvider>
+        </WalletProvider>
         <Analytics />
       </body>
     </html>

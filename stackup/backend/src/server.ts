@@ -24,8 +24,11 @@ const PORT = process.env.PORT || 3001
 // Security middleware
 app.use(helmet())
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
-  credentials: true
+  origin: ['http://localhost:3000','https://stackup.skartik.xyz'], // Allow all origins for now - in production you might want to restrict this
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  
 }))
 
 // Rate limiting
@@ -49,6 +52,26 @@ app.get('/health', (req, res) => {
   })
 })
 
+// Root endpoint with API documentation
+app.get('/', (req, res) => {
+  res.status(200).json({
+    name: 'StackUp Backend API',
+    version: '1.0.0',
+    description: 'Backend API for StackUp platform - bounties, grants, ideas, and user management',
+    status: 'running',
+    endpoints: {
+      bounties: '/api/bounties',
+      grants: '/api/grants',
+      ideas: '/api/ideas',
+      projects: '/api/projects',
+      users: '/api/users',
+      health: '/health'
+    },
+    documentation: 'See DEPLOYMENT.md for full API documentation',
+    timestamp: new Date().toISOString()
+  })
+})
+
 // API routes
 app.use('/api/bounties', bountyRoutes)
 app.use('/api/projects', projectRoutes)
@@ -63,7 +86,7 @@ app.use(errorHandler)
 // Database connection and server startup
 const startServer = async () => {
   try {
-    // Try to connect to database, but don't fail if it's not available
+    // Always try to connect to database first
     try {
       await connectDatabase()
       console.log('✅ Database connected successfully')
@@ -74,29 +97,37 @@ const startServer = async () => {
       await memoryDb.initialize()
     }
     
-    app.listen(PORT, () => {
-      console.log(`🚀 Server running on port ${PORT}`)
-      console.log(`📱 Environment: ${process.env.NODE_ENV || 'development'}`)
-      console.log(`🌐 CORS enabled for: ${process.env.CORS_ORIGIN || 'http://localhost:3000'}`)
-      console.log(`💡 Access at: http://localhost:${PORT}/health`)
-    })
+    // Only start server if not in Vercel serverless environment
+    if (process.env.NODE_ENV !== 'production') {
+      app.listen(PORT, () => {
+        console.log(`🚀 Server running on port ${PORT}`)
+        console.log(`📱 Environment: ${process.env.NODE_ENV || 'development'}`)
+        console.log(`🌐 CORS enabled for: http://localhost:3000`)
+        console.log(`💡 Access at: http://localhost:${PORT}/health`)
+      })
+    }
   } catch (error) {
     console.error('❌ Failed to start server:', error)
-    process.exit(1)
+    if (process.env.NODE_ENV !== 'production') {
+      process.exit(1)
+    }
   }
 }
 
-// Handle uncaught exceptions
-process.on('uncaughtException', (error) => {
-  console.error('Uncaught Exception:', error)
-  process.exit(1)
-})
+// Handle uncaught exceptions (only in development)
+if (process.env.NODE_ENV !== 'production') {
+  process.on('uncaughtException', (error) => {
+    console.error('Uncaught Exception:', error)
+    process.exit(1)
+  })
 
-process.on('unhandledRejection', (error) => {
-  console.error('Unhandled Rejection:', error)
-  process.exit(1)
-})
+  process.on('unhandledRejection', (error) => {
+    console.error('Unhandled Rejection:', error)
+    process.exit(1)
+  })
+}
 
+// Initialize server
 startServer()
 
 export default app

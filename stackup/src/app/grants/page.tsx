@@ -6,69 +6,101 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { useWallet } from '@/contexts/WalletContext';
 import Link from 'next/link';
 import { Search, Building, Calendar, DollarSign, Users } from 'lucide-react';
+import { toast } from 'react-hot-toast';
 
-// Mock data for grants (no backend dependency)
-const mockGrants = [
-  {
-    id: '1',
-    title: 'DeFi Protocol Research Grant',
-    description: 'Fund research into next-generation DeFi protocols on Stacks. We are looking for innovative approaches to decentralized finance.',
-    amount: 25000,
-    organization: 'Stacks Foundation',
-    deadline: '2024-12-31',
-    status: 'open' as const,
-    category: 'Research',
-    requirements: [
-      'PhD in Computer Science or related field',
-      'Experience with blockchain technology',
-      'Published research in DeFi or cryptocurrency'
-    ],
-    applicants: 8,
-    createdAt: '2024-11-01'
-  },
-  {
-    id: '2',
-    title: 'Developer Ecosystem Grant',
-    description: 'Support developers building tools and applications on the Stacks blockchain. Focus on developer experience improvements.',
-    amount: 15000,
-    organization: 'Hiro Systems',
-    deadline: '2024-11-30',
-    status: 'open' as const,
-    category: 'Development',
-    requirements: [
-      'Proven track record in blockchain development',
-      'Open source contribution history',
-      'Clear project roadmap and deliverables'
-    ],
-    applicants: 12,
-    createdAt: '2024-10-15'
-  },
-  {
-    id: '3',
-    title: 'Bitcoin Education Initiative',
-    description: 'Create educational content and workshops about Bitcoin and Stacks for developers and the general public.',
-    amount: 10000,
-    organization: 'Trust Machines',
-    deadline: '2025-01-15',
-    status: 'under-review' as const,
-    category: 'Education',
-    requirements: [
-      'Educational content creation experience',
-      'Understanding of Bitcoin and Stacks',
-      'Community building experience'
-    ],
-    applicants: 6,
-    createdAt: '2024-10-20'
-  }
-];
+interface Grant {
+  _id: string;
+  title: string;
+  description: string;
+  amount: number;
+  organization: string;
+  deadline: string;
+  status: string;
+  category: string;
+  requirements: string[];
+  applicants?: any[];
+  createdAt: string;
+}
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://stackup-backend-4a2z9lasp-singupalli-kartiks-projects.vercel.app';
 
 export default function GrantsPage() {
-  const [grants, setGrants] = useState(mockGrants);
-  const [loading, setLoading] = useState(false);
+  const [grants, setGrants] = useState<Grant[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [applying, setApplying] = useState<string | null>(null);
   const [filter, setFilter] = useState<'all' | 'open' | 'under-review' | 'approved' | 'rejected'>('all');
   const [searchTerm, setSearchTerm] = useState('');
+  
+  const { isAuthenticated, user } = useWallet();
+
+  // Fetch grants from backend
+  const fetchGrants = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const queryParams = new URLSearchParams();
+      if (filter !== 'all') queryParams.append('status', filter);
+      if (searchTerm) queryParams.append('search', searchTerm);
+      
+      const response = await fetch(`${API_BASE_URL}/api/grants?${queryParams}`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      setGrants(data.data || []);
+    } catch (error) {
+      console.error('Error fetching grants:', error);
+      setError('Failed to load grants. Please try again.');
+      setGrants([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchGrants();
+  }, [filter, searchTerm]);
+
+  const handleApplyToGrant = async (grantId: string) => {
+    if (!isAuthenticated || !user) {
+      toast.error('Please connect your wallet first');
+      return;
+    }
+
+    try {
+      setApplying(grantId);
+      
+      const response = await fetch(`${API_BASE_URL}/api/grants/${grantId}/apply`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          address: user.stxAddress,
+          proposal: 'Application submitted via UI',
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to apply to grant');
+      }
+
+      toast.success('Applied to grant successfully!');
+      fetchGrants();
+    } catch (error) {
+      console.error('Error applying to grant:', error);
+      toast.error('Failed to apply to grant. Please try again.');
+    } finally {
+      setApplying(null);
+    }
+  };
 
   const filteredGrants = grants.filter(grant => {
     const matchesFilter = filter === 'all' || grant.status === filter;
@@ -95,7 +127,24 @@ export default function GrantsPage() {
         <div className="flex items-center justify-center min-h-[70vh]">
           <div className="text-center">
             <div className="animate-spin rounded-full h-32 w-32 border-4 border-gray-200 border-t-[#fc6431] mx-auto"></div>
-            <p className="mt-6 text-gray-600 font-medium">Loading grants...</p>
+            <p className="mt-6 text-gray-600 font-medium">Loading grants from backend...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navigation />
+        <div className="flex items-center justify-center min-h-[70vh]">
+          <div className="text-center">
+            <div className="text-red-500 text-lg font-semibold mb-4">Error loading grants</div>
+            <p className="text-gray-600 mb-4">{error}</p>
+            <Button onClick={fetchGrants} className="bg-[#fc6431] hover:bg-[#e55a2b] text-white">
+              Try Again
+            </Button>
           </div>
         </div>
       </div>
@@ -105,6 +154,7 @@ export default function GrantsPage() {
   const totalFunding = grants.reduce((sum, grant) => sum + grant.amount, 0);
   const openGrants = grants.filter(g => g.status === 'open').length;
   const underReviewGrants = grants.filter(g => g.status === 'under-review').length;
+  const totalApplicants = grants.reduce((sum, g) => sum + (g.applicants?.length || 0), 0);
 
   return (
     <div className="min-h-screen bg-background">
@@ -119,9 +169,11 @@ export default function GrantsPage() {
                 Secure funding for research and ecosystem development
               </p>
             </div>
-            <Button className="bg-[#fc6431] hover:bg-[#e55a2b] text-white">
-              Apply for Grant
-            </Button>
+            <Link href="/create/grant">
+              <Button className="bg-[#fc6431] hover:bg-[#e55a2b] text-white">
+                Create Grant
+              </Button>
+            </Link>
           </div>
 
           {/* Stats Bar */}
@@ -139,7 +191,7 @@ export default function GrantsPage() {
               <div className="text-sm text-muted-foreground">Total Funding</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-[#fc6431]">{grants.reduce((sum, g) => sum + g.applicants, 0)}</div>
+              <div className="text-2xl font-bold text-[#fc6431]">{totalApplicants}</div>
               <div className="text-sm text-muted-foreground">Applications</div>
             </div>
           </div>
@@ -192,13 +244,13 @@ export default function GrantsPage() {
           <div className="lg:col-span-3">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {filteredGrants.map((grant) => (
-                <Card key={grant.id} className="hover:shadow-lg transition-shadow">
+                <Card key={grant._id} className="hover:shadow-lg transition-shadow">
                   <CardHeader>
                     <div className="flex items-start justify-between">
                       <div className="space-y-2">
                         <div className="flex items-center gap-2">
                           <CardTitle className="text-lg hover:text-[#fc6431] transition-colors">
-                            <Link href={`/grants/${grant.id}`}>
+                            <Link href={`/grants/${grant._id}`}>
                               {grant.title}
                             </Link>
                           </CardTitle>
@@ -222,7 +274,7 @@ export default function GrantsPage() {
                       <div className="flex items-center justify-between">
                         <span className="text-sm font-medium text-gray-600">Grant Amount</span>
                         <span className="text-lg font-bold text-[#fc6431]">
-                          ${grant.amount.toLocaleString()}
+                          {grant.amount.toLocaleString()} STX
                         </span>
                       </div>
                       
@@ -236,13 +288,13 @@ export default function GrantsPage() {
                     <div className="space-y-2">
                       <div className="text-sm font-medium text-gray-700">Requirements</div>
                       <ul className="text-xs text-gray-600 space-y-1">
-                        {grant.requirements.slice(0, 2).map((req, index) => (
+                        {grant.requirements?.slice(0, 2).map((req, index) => (
                           <li key={index} className="flex items-start gap-1">
                             <span className="text-[#fc6431] mt-1">•</span>
                             <span>{req}</span>
                           </li>
                         ))}
-                        {grant.requirements.length > 2 && (
+                        {grant.requirements && grant.requirements.length > 2 && (
                           <li className="text-gray-500">
                             +{grant.requirements.length - 2} more requirements
                           </li>
@@ -253,7 +305,7 @@ export default function GrantsPage() {
                     <div className="flex items-center justify-between text-sm text-gray-500">
                       <div className="flex items-center space-x-2">
                         <Users className="h-4 w-4" />
-                        <span>{grant.applicants} applicants</span>
+                        <span>{grant.applicants?.length || 0} applicants</span>
                       </div>
                       <div className="flex items-center space-x-2">
                         <Calendar className="h-4 w-4" />
@@ -261,12 +313,27 @@ export default function GrantsPage() {
                       </div>
                     </div>
 
-                    <div className="pt-2 border-t border-gray-100">
-                      <Button asChild className="w-full bg-[#fc6431] hover:bg-[#e55a2b] text-white">
-                        <Link href={`/grants/${grant.id}`}>
+                    <div className="pt-2 border-t border-gray-100 flex gap-2">
+                      <Button asChild size="sm" variant="outline" className="flex-1">
+                        <Link href={`/grants/${grant._id}`}>
                           View Details
                         </Link>
                       </Button>
+                      {grant.status === 'open' && isAuthenticated && (
+                        <Button
+                          size="sm"
+                          onClick={() => handleApplyToGrant(grant._id)}
+                          disabled={applying === grant._id}
+                          className="flex-1 bg-[#fc6431] hover:bg-[#e55a2b] text-white"
+                        >
+                          {applying === grant._id ? 'Applying...' : 'Apply'}
+                        </Button>
+                      )}
+                      {!isAuthenticated && grant.status === 'open' && (
+                        <Button size="sm" variant="outline" className="flex-1" disabled>
+                          Connect Wallet to Apply
+                        </Button>
+                      )}
                     </div>
                   </CardContent>
                 </Card>

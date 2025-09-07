@@ -11,8 +11,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
-import { ArrowLeft, DollarSign, Calendar, Users, Code, Shield, Zap } from "lucide-react"
+import { ArrowLeft, DollarSign, Calendar, Users, Code, Shield, Zap, Wallet } from "lucide-react"
 import Link from "next/link"
+import { useWallet } from "@/contexts/WalletContext"
+import { toast } from "react-hot-toast"
+import { useRouter } from "next/navigation"
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://stackup-backend-4a2z9lasp-singupalli-kartiks-projects.vercel.app';
 
 const skillOptions = [
   "JavaScript",
@@ -41,12 +46,15 @@ const categoryOptions = [
 ]
 
 export default function CreateBountyPage() {
+  const { isAuthenticated, user, connectWallet } = useWallet()
+  const router = useRouter()
+
   const [formData, setFormData] = useState({
     title: "",
     description: "",
     category: "",
     difficulty: "",
-    reward: "",
+    amount: "",
     deadline: "",
     requirements: "",
     deliverables: "",
@@ -55,6 +63,7 @@ export default function CreateBountyPage() {
   })
 
   const [currentStep, setCurrentStep] = useState(1)
+  const [creating, setCreating] = useState(false)
   const totalSteps = 4
 
   const handleSkillToggle = (skill: string) => {
@@ -80,10 +89,57 @@ export default function CreateBountyPage() {
     }))
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // Handle form submission
-    console.log("Bounty created:", formData)
+    
+    if (!isAuthenticated || !user) {
+      toast.error('Please connect your wallet first')
+      return
+    }
+
+    if (!formData.title || !formData.description || !formData.amount || !formData.deadline) {
+      toast.error('Please fill in all required fields')
+      return
+    }
+
+    try {
+      setCreating(true)
+      
+      const bountyData = {
+        title: formData.title,
+        description: formData.description,
+        amount: Number(formData.amount),
+        creator: user.stxAddress,
+        deadline: formData.deadline,
+        status: 'open',
+        category: formData.category,
+        skills: formData.skills,
+        requirements: formData.requirements,
+        deliverables: formData.deliverables,
+        difficulty: formData.difficulty,
+      }
+
+      const response = await fetch(`${API_BASE_URL}/api/bounties`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(bountyData),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to create bounty')
+      }
+
+      const newBounty = await response.json()
+      toast.success('Bounty created successfully!')
+      router.push(`/bounties/${newBounty.data._id}`)
+    } catch (error) {
+      console.error('Error creating bounty:', error)
+      toast.error('Failed to create bounty. Please try again.')
+    } finally {
+      setCreating(false)
+    }
   }
 
   const nextStep = () => setCurrentStep((prev) => Math.min(prev + 1, totalSteps))
@@ -113,13 +169,13 @@ export default function CreateBountyPage() {
               <div key={i} className="flex items-center">
                 <div
                   className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                    i + 1 <= currentStep ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                    i + 1 <= currentStep ? "bg-[#fc6431] text-white" : "bg-muted text-muted-foreground"
                   }`}
                 >
                   {i + 1}
                 </div>
                 {i < totalSteps - 1 && (
-                  <div className={`h-0.5 w-16 mx-2 ${i + 1 < currentStep ? "bg-primary" : "bg-muted"}`} />
+                  <div className={`h-0.5 w-16 mx-2 ${i + 1 < currentStep ? "bg-[#fc6431]" : "bg-muted"}`} />
                 )}
               </div>
             ))}
@@ -130,6 +186,44 @@ export default function CreateBountyPage() {
         </div>
 
         <form onSubmit={handleSubmit} className="max-w-4xl">
+          {/* Wallet Connection Check */}
+          {!isAuthenticated && (
+            <Card className="mb-6 border-orange-200 bg-orange-50">
+              <CardContent className="p-6">
+                <div className="flex items-center gap-4">
+                  <Wallet className="h-8 w-8 text-orange-600" />
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-orange-800">Connect Your Wallet</h3>
+                    <p className="text-orange-700 text-sm">
+                      You need to connect your Stacks wallet to create a bounty. Your wallet address will be used as the bounty creator.
+                    </p>
+                  </div>
+                  <Button 
+                    type="button"
+                    onClick={connectWallet}
+                    className="bg-orange-600 hover:bg-orange-700 text-white"
+                  >
+                    Connect Wallet
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Connected Wallet Info */}
+          {isAuthenticated && user && (
+            <Card className="mb-6 border-green-200 bg-green-50">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                  <span className="text-green-800 text-sm font-medium">
+                    Connected as: {user.stxAddress}
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Step 1: Basic Information */}
           {currentStep === 1 && (
             <Card>
@@ -227,8 +321,8 @@ export default function CreateBountyPage() {
                         type="number"
                         placeholder="1000"
                         className="pl-10"
-                        value={formData.reward}
-                        onChange={(e) => setFormData((prev) => ({ ...prev, reward: e.target.value }))}
+                        value={formData.amount}
+                        onChange={(e) => setFormData((prev) => ({ ...prev, amount: e.target.value }))}
                         required
                       />
                     </div>
@@ -354,7 +448,7 @@ export default function CreateBountyPage() {
                     </div>
                     <div>
                       <h4 className="font-medium">Reward</h4>
-                      <p className="text-muted-foreground">{formData.reward} STX</p>
+                      <p className="text-muted-foreground">{formData.amount} STX</p>
                     </div>
                     <div>
                       <h4 className="font-medium">Deadline</h4>
@@ -396,12 +490,21 @@ export default function CreateBountyPage() {
             </Button>
 
             {currentStep < totalSteps ? (
-              <Button type="button" onClick={nextStep}>
+              <Button 
+                type="button" 
+                onClick={nextStep} 
+                disabled={!isAuthenticated}
+                className="bg-[#fc6431] hover:bg-[#e55a2b] text-white"
+              >
                 Next
               </Button>
             ) : (
-              <Button type="submit" className="bg-primary hover:bg-primary/90">
-                Create Bounty
+              <Button 
+                type="submit" 
+                className="bg-[#fc6431] hover:bg-[#e55a2b] text-white"
+                disabled={!isAuthenticated || creating}
+              >
+                {creating ? 'Creating Bounty...' : 'Create Bounty'}
               </Button>
             )}
           </div>

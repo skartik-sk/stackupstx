@@ -6,54 +6,100 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { useWallet } from '@/contexts/WalletContext';
 import Link from 'next/link';
 import { Search, Lightbulb, TrendingUp, Heart, Calendar, DollarSign } from 'lucide-react';
+import { toast } from 'react-hot-toast';
 
-// Mock data for ideas (no backend dependency)
-const mockIdeas = [
-  {
-    id: '1',
-    title: 'Decentralized Identity Management',
-    description: 'A comprehensive identity management system built on Stacks that allows users to control their digital identity without relying on centralized authorities.',
-    creator: 'SP2J6ZY48GV1EZ5V2V5RB9MP66SW86PYKKNRV9EJ7',
-    status: 'idea' as const,
-    category: 'Identity',
-    tags: ['Identity', 'Privacy', 'Security', 'DeFi'],
-    votes: 45,
-    estimatedBudget: 50000,
-    createdAt: '2024-11-01'
-  },
-  {
-    id: '2',
-    title: 'Cross-Chain Bridge Protocol',
-    description: 'Enable seamless asset transfers between Stacks and other major blockchains like Ethereum and Polygon with minimal fees and maximum security.',
-    creator: 'SP3K8BC0PPEVCV7NZ6QSRWPQ2JE9E5B6N3PA0KBR9',
-    status: 'funded' as const,
-    category: 'Infrastructure',
-    tags: ['Cross-chain', 'Bridge', 'Interoperability'],
-    votes: 72,
-    estimatedBudget: 75000,
-    createdAt: '2024-10-15'
-  },
-  {
-    id: '3',
-    title: 'NFT Marketplace with Royalties',
-    description: 'A next-generation NFT marketplace that automatically handles creator royalties and provides advanced discovery features for collectors.',
-    creator: 'SP1HTBVD3JG9C05J7HBJTHGR0GGW7KX6JS75K9R02',
-    status: 'in-development' as const,
-    category: 'NFTs',
-    tags: ['NFT', 'Marketplace', 'Royalties', 'Art'],
-    votes: 38,
-    estimatedBudget: 30000,
-    createdAt: '2024-10-20'
-  }
-];
+interface Idea {
+  _id: string;
+  title: string;
+  description: string;
+  creator: string;
+  status: string;
+  category: string;
+  tags: string[];
+  votes: number;
+  estimatedBudget?: number;
+  createdAt: string;
+  votedUsers?: string[];
+}
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://stackup-backend-4a2z9lasp-singupalli-kartiks-projects.vercel.app';
 
 export default function IdeasPage() {
-  const [ideas, setIdeas] = useState(mockIdeas);
-  const [loading, setLoading] = useState(false);
+  const [ideas, setIdeas] = useState<Idea[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [voting, setVoting] = useState<string | null>(null);
   const [filter, setFilter] = useState<'all' | 'idea' | 'funded' | 'in-development' | 'launched'>('all');
   const [searchTerm, setSearchTerm] = useState('');
+  
+  const { isAuthenticated, user } = useWallet();
+
+  // Fetch ideas from backend
+  const fetchIdeas = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const queryParams = new URLSearchParams();
+      if (filter !== 'all') queryParams.append('status', filter);
+      if (searchTerm) queryParams.append('search', searchTerm);
+      
+      const response = await fetch(`${API_BASE_URL}/api/ideas?${queryParams}`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      setIdeas(data.data || []);
+    } catch (error) {
+      console.error('Error fetching ideas:', error);
+      setError('Failed to load ideas. Please try again.');
+      setIdeas([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchIdeas();
+  }, [filter, searchTerm]);
+
+  const handleVoteIdea = async (ideaId: string) => {
+    if (!isAuthenticated || !user) {
+      toast.error('Please connect your wallet first');
+      return;
+    }
+
+    try {
+      setVoting(ideaId);
+      
+      const response = await fetch(`${API_BASE_URL}/api/ideas/${ideaId}/vote`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          address: user.stxAddress,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to vote on idea');
+      }
+
+      toast.success('Voted successfully!');
+      fetchIdeas();
+    } catch (error) {
+      console.error('Error voting on idea:', error);
+      toast.error('Failed to vote on idea. Please try again.');
+    } finally {
+      setVoting(null);
+    }
+  };
 
   const filteredIdeas = ideas.filter(idea => {
     const matchesFilter = filter === 'all' || idea.status === filter;
@@ -80,7 +126,24 @@ export default function IdeasPage() {
         <div className="flex items-center justify-center min-h-[70vh]">
           <div className="text-center">
             <div className="animate-spin rounded-full h-32 w-32 border-4 border-gray-200 border-t-[#fc6431] mx-auto"></div>
-            <p className="mt-6 text-gray-600 font-medium">Loading ideas...</p>
+            <p className="mt-6 text-gray-600 font-medium">Loading ideas from backend...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navigation />
+        <div className="flex items-center justify-center min-h-[70vh]">
+          <div className="text-center">
+            <div className="text-red-500 text-lg font-semibold mb-4">Error loading ideas</div>
+            <p className="text-gray-600 mb-4">{error}</p>
+            <Button onClick={fetchIdeas} className="bg-[#fc6431] hover:bg-[#e55a2b] text-white">
+              Try Again
+            </Button>
           </div>
         </div>
       </div>
@@ -104,9 +167,11 @@ export default function IdeasPage() {
                 Share groundbreaking ideas and get community feedback
               </p>
             </div>
-            <Button className="bg-[#fc6431] hover:bg-[#e55a2b] text-white">
-              Submit Idea
-            </Button>
+            <Link href="/create/idea">
+              <Button className="bg-[#fc6431] hover:bg-[#e55a2b] text-white">
+                Submit Idea
+              </Button>
+            </Link>
           </div>
 
           {/* Stats Bar */}
@@ -179,13 +244,13 @@ export default function IdeasPage() {
           <div className="lg:col-span-3">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {filteredIdeas.map((idea) => (
-                <Card key={idea.id} className="hover:shadow-lg transition-shadow">
+                <Card key={idea._id} className="hover:shadow-lg transition-shadow">
                   <CardHeader>
                     <div className="flex items-start justify-between">
                       <div className="space-y-2">
                         <div className="flex items-center gap-2">
                           <CardTitle className="text-lg hover:text-[#fc6431] transition-colors">
-                            <Link href={`/ideas/${idea.id}`}>
+                            <Link href={`/ideas/${idea._id}`}>
                               {idea.title}
                             </Link>
                           </CardTitle>
@@ -250,14 +315,31 @@ export default function IdeasPage() {
                     </div>
 
                     <div className="pt-2 border-t border-gray-100 flex gap-2">
-                      <Button asChild className="flex-1 bg-[#fc6431] hover:bg-[#e55a2b] text-white">
-                        <Link href={`/ideas/${idea.id}`}>
+                      <Button asChild size="sm" variant="outline" className="flex-1">
+                        <Link href={`/ideas/${idea._id}`}>
                           View Idea
                         </Link>
                       </Button>
-                      <Button variant="outline" size="sm" className="px-3">
-                        <Heart className="h-4 w-4" />
-                      </Button>
+                      {isAuthenticated && user?.stxAddress !== idea.creator && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleVoteIdea(idea._id)}
+                          disabled={voting === idea._id || idea.votedUsers?.includes(user?.stxAddress || '')}
+                          className="px-3"
+                        >
+                          {voting === idea._id ? (
+                            <div className="animate-spin rounded-full h-4 w-4 border-2 border-gray-300 border-t-[#fc6431]" />
+                          ) : (
+                            <Heart className={`h-4 w-4 ${idea.votedUsers?.includes(user?.stxAddress || '') ? 'fill-red-500 text-red-500' : ''}`} />
+                          )}
+                        </Button>
+                      )}
+                      {!isAuthenticated && (
+                        <Button variant="outline" size="sm" className="px-3" disabled>
+                          <Heart className="h-4 w-4" />
+                        </Button>
+                      )}
                     </div>
                   </CardContent>
                 </Card>

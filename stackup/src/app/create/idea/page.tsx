@@ -11,8 +11,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
-import { ArrowLeft, Sparkles, Brain, Target, Users, Lightbulb, TrendingUp, Shield } from "lucide-react"
+import { ArrowLeft, Sparkles, Brain, Target, Users, Lightbulb, TrendingUp, Shield, Wallet } from "lucide-react"
 import Link from "next/link"
+import { useWallet } from "@/contexts/WalletContext"
+import { toast } from "react-hot-toast"
+import { useRouter } from "next/navigation"
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://stackup-backend-4a2z9lasp-singupalli-kartiks-projects.vercel.app';
 
 const categoryOptions = [
   { value: "defi", label: "DeFi & Finance", icon: TrendingUp },
@@ -45,6 +50,11 @@ const implementationTimeOptions = [
 ]
 
 export default function CreateIdeaPage() {
+  const { isAuthenticated, user, connectWallet } = useWallet()
+  const router = useRouter()
+  
+  const [creating, setCreating] = useState(false)
+
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -54,14 +64,15 @@ export default function CreateIdeaPage() {
     targetAudience: [] as string[],
     implementationTime: "",
     technicalRequirements: "",
-    marketPotential: "",
+    estimatedBudget: "",
+    additionalInfo: "",
     uniqueValue: "",
     inspiration: "",
+    marketPotential: "",
     additionalNotes: "",
   })
 
   const [currentStep, setCurrentStep] = useState(1)
-  const [isSubmitting, setIsSubmitting] = useState(false)
   const totalSteps = 3
 
   const handleAudienceToggle = (audience: string) => {
@@ -75,14 +86,57 @@ export default function CreateIdeaPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsSubmitting(true)
+    
+    if (!isAuthenticated || !user) {
+      toast.error('Please connect your wallet first')
+      return
+    }
 
-    // Simulate AI analysis
-    await new Promise((resolve) => setTimeout(resolve, 2000))
+    if (!formData.title || !formData.description || !formData.problem || !formData.solution) {
+      toast.error('Please fill in all required fields')
+      return
+    }
 
-    console.log("Idea submitted:", formData)
-    setIsSubmitting(false)
-    // Redirect to ideas page or show success message
+    try {
+      setCreating(true)
+      
+      const ideaData = {
+        title: formData.title,
+        description: formData.description,
+        problem: formData.problem,
+        solution: formData.solution,
+        category: formData.category,
+        creator: user.stxAddress,
+        targetAudience: formData.targetAudience,
+        implementationTime: formData.implementationTime,
+        technicalRequirements: formData.technicalRequirements,
+        estimatedBudget: formData.estimatedBudget ? Number(formData.estimatedBudget) : undefined,
+        tags: [...formData.targetAudience, formData.category].filter(Boolean),
+        status: 'idea',
+        votes: 0,
+      }
+
+      const response = await fetch(`${API_BASE_URL}/api/ideas`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(ideaData),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to create idea')
+      }
+
+      const newIdea = await response.json()
+      toast.success('Idea submitted successfully!')
+      router.push(`/ideas/${newIdea.data._id}`)
+    } catch (error) {
+      console.error('Error creating idea:', error)
+      toast.error('Failed to create idea. Please try again.')
+    } finally {
+      setCreating(false)
+    }
   }
 
   const nextStep = () => setCurrentStep((prev) => Math.min(prev + 1, totalSteps))
@@ -100,16 +154,8 @@ export default function CreateIdeaPage() {
             </Button>
           </Link>
           <div>
-            <div className="flex items-center gap-2 mb-1">
-              <h1 className="text-3xl font-bold text-balance">Submit Your Idea</h1>
-              <div className="flex items-center space-x-1 px-2 py-1 bg-primary/10 rounded-full">
-                <Sparkles className="w-4 h-4 text-primary" />
-                <span className="text-xs font-medium text-primary">AI Analysis</span>
-              </div>
-            </div>
-            <p className="text-muted-foreground">
-              Share your innovative idea and get AI-powered insights and community feedback
-            </p>
+            <h1 className="text-3xl font-bold text-balance">Share Your Idea</h1>
+            <p className="text-muted-foreground mt-1">Submit an innovative idea for the Stacks ecosystem</p>
           </div>
         </div>
 
@@ -120,37 +166,77 @@ export default function CreateIdeaPage() {
               <div key={i} className="flex items-center">
                 <div
                   className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                    i + 1 <= currentStep ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                    i + 1 <= currentStep ? "bg-[#fc6431] text-white" : "bg-muted text-muted-foreground"
                   }`}
                 >
                   {i + 1}
                 </div>
                 {i < totalSteps - 1 && (
-                  <div className={`h-0.5 w-16 mx-2 ${i + 1 < currentStep ? "bg-primary" : "bg-muted"}`} />
+                  <div className={`h-0.5 w-16 mx-2 ${i + 1 < currentStep ? "bg-[#fc6431]" : "bg-muted"}`} />
                 )}
               </div>
             ))}
           </div>
           <div className="text-sm text-muted-foreground">
-            Step {currentStep} of {totalSteps}:{" "}
-            {currentStep === 1 ? "Basic Information" : currentStep === 2 ? "Problem & Solution" : "Details & Analysis"}
+            Step {currentStep} of {totalSteps}
           </div>
         </div>
 
         <form onSubmit={handleSubmit} className="max-w-4xl">
-          {/* Step 1: Basic Information */}
+          {/* Wallet Connection Check */}
+          {!isAuthenticated && (
+            <Card className="mb-6 border-orange-200 bg-orange-50">
+              <CardContent className="p-6">
+                <div className="flex items-center gap-4">
+                  <Wallet className="h-8 w-8 text-orange-600" />
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-orange-800">Connect Your Wallet</h3>
+                    <p className="text-orange-700 text-sm">
+                      You need to connect your Stacks wallet to submit an idea. Your wallet address will be used as the idea creator.
+                    </p>
+                  </div>
+                  <Button 
+                    type="button"
+                    onClick={connectWallet}
+                    className="bg-orange-600 hover:bg-orange-700 text-white"
+                  >
+                    Connect Wallet
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Connected Wallet Info */}
+          {isAuthenticated && user && (
+            <Card className="mb-6 border-green-200 bg-green-50">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                  <span className="text-green-800 text-sm font-medium">
+                    Connected as: {user.stxAddress}
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Step 1: Core Idea */}
           {currentStep === 1 && (
             <Card>
               <CardHeader>
-                <CardTitle>Basic Information</CardTitle>
-                <CardDescription>Tell us about your idea in simple terms</CardDescription>
+                <CardTitle className="flex items-center gap-2">
+                  <Lightbulb className="h-5 w-5 text-[#fc6431]" />
+                  Core Idea
+                </CardTitle>
+                <CardDescription>Describe the fundamental concept of your idea</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="space-y-2">
                   <Label htmlFor="title">Idea Title *</Label>
                   <Input
                     id="title"
-                    placeholder="e.g., Decentralized Social Media Platform for Creators"
+                    placeholder="e.g., Decentralized Social Media for Developers"
                     value={formData.title}
                     onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
                     required
@@ -161,7 +247,7 @@ export default function CreateIdeaPage() {
                   <Label htmlFor="description">Brief Description *</Label>
                   <Textarea
                     id="description"
-                    placeholder="Provide a concise overview of your idea in 2-3 sentences..."
+                    placeholder="Provide a clear, concise overview of your idea..."
                     rows={4}
                     value={formData.description}
                     onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
@@ -169,55 +255,71 @@ export default function CreateIdeaPage() {
                   />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label>Category *</Label>
-                    <Select
-                      value={formData.category}
-                      onValueChange={(value) => setFormData((prev) => ({ ...prev, category: value }))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select category" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {categoryOptions.map((category) => {
-                          const Icon = category.icon
-                          return (
-                            <SelectItem key={category.value} value={category.value}>
-                              <div className="flex items-center gap-2">
-                                <Icon className="h-4 w-4" />
-                                {category.label}
-                              </div>
-                            </SelectItem>
-                          )
-                        })}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Estimated Implementation Time</Label>
-                    <Select
-                      value={formData.implementationTime}
-                      onValueChange={(value) => setFormData((prev) => ({ ...prev, implementationTime: value }))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="How long to build?" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {implementationTimeOptions.map((option) => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                <div className="space-y-2">
+                  <Label htmlFor="problem">Problem Statement *</Label>
+                  <Textarea
+                    id="problem"
+                    placeholder="What problem does this idea solve? Why is it important?"
+                    rows={4}
+                    value={formData.problem}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, problem: e.target.value }))}
+                    required
+                  />
                 </div>
 
+                <div className="space-y-2">
+                  <Label htmlFor="solution">Proposed Solution *</Label>
+                  <Textarea
+                    id="solution"
+                    placeholder="How does your idea solve the problem? What makes it unique?"
+                    rows={4}
+                    value={formData.solution}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, solution: e.target.value }))}
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Category *</Label>
+                  <Select
+                    value={formData.category}
+                    onValueChange={(value) => setFormData((prev) => ({ ...prev, category: value }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categoryOptions.map((category) => {
+                        const Icon = category.icon
+                        return (
+                          <SelectItem key={category.value} value={category.value}>
+                            <div className="flex items-center gap-2">
+                              <Icon className="h-4 w-4" />
+                              {category.label}
+                            </div>
+                          </SelectItem>
+                        )
+                      })}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Step 2: Target & Implementation */}
+          {currentStep === 2 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Target className="h-5 w-5 text-[#fc6431]" />
+                  Target & Implementation
+                </CardTitle>
+                <CardDescription>Define who this is for and how it could be built</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
                 <div className="space-y-3">
-                  <Label>Target Audience *</Label>
-                  <p className="text-sm text-muted-foreground">Who would benefit from this idea?</p>
+                  <Label>Target Audience</Label>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                     {targetAudienceOptions.map((audience) => (
                       <div key={audience} className="flex items-center space-x-2">
@@ -242,80 +344,31 @@ export default function CreateIdeaPage() {
                     </div>
                   )}
                 </div>
-              </CardContent>
-            </Card>
-          )}
 
-          {/* Step 2: Problem & Solution */}
-          {currentStep === 2 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Problem & Solution</CardTitle>
-                <CardDescription>Help us understand the problem you're solving</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
                 <div className="space-y-2">
-                  <Label htmlFor="problem">What problem does this solve? *</Label>
-                  <Textarea
-                    id="problem"
-                    placeholder="Describe the specific problem or pain point your idea addresses..."
-                    rows={4}
-                    value={formData.problem}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, problem: e.target.value }))}
-                    required
-                  />
+                  <Label>Estimated Implementation Time</Label>
+                  <Select
+                    value={formData.implementationTime}
+                    onValueChange={(value) => setFormData((prev) => ({ ...prev, implementationTime: value }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="How long might this take to build?" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {implementationTimeOptions.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="solution">How does your idea solve it? *</Label>
+                  <Label htmlFor="technical">Technical Requirements</Label>
                   <Textarea
-                    id="solution"
-                    placeholder="Explain your proposed solution and how it works..."
-                    rows={4}
-                    value={formData.solution}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, solution: e.target.value }))}
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="uniqueValue">What makes this unique?</Label>
-                  <Textarea
-                    id="uniqueValue"
-                    placeholder="What sets your idea apart from existing solutions?"
-                    rows={3}
-                    value={formData.uniqueValue}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, uniqueValue: e.target.value }))}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="inspiration">Inspiration (Optional)</Label>
-                  <Textarea
-                    id="inspiration"
-                    placeholder="What inspired this idea? Any existing solutions you're improving upon?"
-                    rows={3}
-                    value={formData.inspiration}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, inspiration: e.target.value }))}
-                  />
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Step 3: Technical Details */}
-          {currentStep === 3 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Technical Details & Market Potential</CardTitle>
-                <CardDescription>Additional details for AI analysis</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="space-y-2">
-                  <Label htmlFor="technicalRequirements">Technical Requirements</Label>
-                  <Textarea
-                    id="technicalRequirements"
-                    placeholder="What technologies, skills, or resources would be needed to build this?"
+                    id="technical"
+                    placeholder="What technologies, skills, or resources would be needed?"
                     rows={4}
                     value={formData.technicalRequirements}
                     onChange={(e) => setFormData((prev) => ({ ...prev, technicalRequirements: e.target.value }))}
@@ -323,41 +376,107 @@ export default function CreateIdeaPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="marketPotential">Market Potential</Label>
+                  <Label htmlFor="budget">Estimated Budget (STX)</Label>
+                  <Input
+                    id="budget"
+                    type="number"
+                    placeholder="50000"
+                    value={formData.estimatedBudget}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, estimatedBudget: e.target.value }))}
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    Optional: Rough estimate of funding needed to develop this idea
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Step 3: Additional Details */}
+          {currentStep === 3 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Sparkles className="h-5 w-5 text-[#fc6431]" />
+                  Additional Details
+                </CardTitle>
+                <CardDescription>Provide more context and review your submission</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-2">
+                  <Label htmlFor="unique">What Makes This Unique?</Label>
                   <Textarea
-                    id="marketPotential"
-                    placeholder="How big is the potential market? Who are the competitors?"
-                    rows={4}
+                    id="unique"
+                    placeholder="How is this different from existing solutions?"
+                    rows={3}
+                    value={formData.uniqueValue}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, uniqueValue: e.target.value }))}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="inspiration">Inspiration & References</Label>
+                  <Textarea
+                    id="inspiration"
+                    placeholder="What inspired this idea? Any similar projects or research?"
+                    rows={3}
+                    value={formData.inspiration}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, inspiration: e.target.value }))}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="market">Market Potential</Label>
+                  <Textarea
+                    id="market"
+                    placeholder="Who would benefit from this? What's the potential impact?"
+                    rows={3}
                     value={formData.marketPotential}
                     onChange={(e) => setFormData((prev) => ({ ...prev, marketPotential: e.target.value }))}
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="additionalNotes">Additional Notes</Label>
+                  <Label htmlFor="additional">Additional Notes</Label>
                   <Textarea
-                    id="additionalNotes"
-                    placeholder="Any other details, concerns, or thoughts about your idea?"
+                    id="additional"
+                    placeholder="Anything else you'd like to share about this idea?"
                     rows={3}
                     value={formData.additionalNotes}
                     onChange={(e) => setFormData((prev) => ({ ...prev, additionalNotes: e.target.value }))}
                   />
                 </div>
 
+                {/* Review Section */}
+                <div className="border-t pt-6">
+                  <h4 className="font-medium mb-4">Review Your Idea</h4>
+                  <div className="space-y-3 text-sm">
+                    <div>
+                      <span className="font-medium">Title:</span> {formData.title}
+                    </div>
+                    <div>
+                      <span className="font-medium">Category:</span> {formData.category}
+                    </div>
+                    {formData.estimatedBudget && (
+                      <div>
+                        <span className="font-medium">Estimated Budget:</span> {formData.estimatedBudget} STX
+                      </div>
+                    )}
+                    {formData.targetAudience.length > 0 && (
+                      <div>
+                        <span className="font-medium">Target Audience:</span> {formData.targetAudience.join(", ")}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
                 <div className="bg-muted/50 p-4 rounded-lg">
-                  <h4 className="font-medium mb-2 flex items-center gap-2">
-                    <Brain className="h-4 w-4 text-primary" />
-                    AI Analysis Preview
-                  </h4>
-                  <p className="text-sm text-muted-foreground mb-3">
-                    Once submitted, our AI will analyze your idea for:
-                  </p>
+                  <h4 className="font-medium mb-2">What happens next?</h4>
                   <ul className="text-sm text-muted-foreground space-y-1">
-                    <li>• Technical difficulty and feasibility assessment</li>
-                    <li>• Innovation score and market potential</li>
-                    <li>• Similar existing solutions detection</li>
-                    <li>• Required skills and resource estimation</li>
-                    <li>• Development timeline prediction</li>
+                    <li>• Your idea will be published and visible to the community</li>
+                    <li>• Community members can vote and provide feedback</li>
+                    <li>• Popular ideas may attract funding or development interest</li>
+                    <li>• You can update your idea based on community input</li>
                   </ul>
                 </div>
               </CardContent>
@@ -371,22 +490,21 @@ export default function CreateIdeaPage() {
             </Button>
 
             {currentStep < totalSteps ? (
-              <Button type="button" onClick={nextStep}>
+              <Button 
+                type="button" 
+                onClick={nextStep} 
+                disabled={!isAuthenticated}
+                className="bg-[#fc6431] hover:bg-[#e55a2b] text-white"
+              >
                 Next
               </Button>
             ) : (
-              <Button type="submit" disabled={isSubmitting} className="bg-primary hover:bg-primary/90">
-                {isSubmitting ? (
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    Analyzing Idea...
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <Sparkles className="h-4 w-4" />
-                    Submit for AI Analysis
-                  </div>
-                )}
+              <Button 
+                type="submit" 
+                className="bg-[#fc6431] hover:bg-[#e55a2b] text-white"
+                disabled={!isAuthenticated || creating}
+              >
+                {creating ? 'Submitting Idea...' : 'Submit Idea'}
               </Button>
             )}
           </div>
