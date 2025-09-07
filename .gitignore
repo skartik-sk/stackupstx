@@ -23,7 +23,7 @@ pnpm-debug.log*
 # OS files
 .DS_Store
 Thumbs.db
-
+stackup/v0/
 # Editors / IDEs
 .vscode/
 .idea/

@@ -1,7 +1,8 @@
 'use client'
 
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { Navigation } from "@/components/navigation"
+import { HeroSection } from "@/components/hero-section"
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -9,300 +10,167 @@ import { useStacks } from '@/providers/StacksProvider'
 import { 
   Target, 
   Rocket, 
-  Code, 
   Coins, 
   Users, 
-  TrendingUp, 
   Award,
   ArrowRight,
   Lightbulb,
-  Shield,
   Zap,
+  TrendingUp,
+  Code,
+  Shield,
   Globe
 } from 'lucide-react'
 import Link from 'next/link'
+import { fetchPlatformStats, fetchBounties, type PlatformStats, type Bounty } from '@/lib/data'
 
 export default function HomePage() {
   const { isConnected, account } = useStacks()
+  const [stats, setStats] = useState<PlatformStats | null>(null)
+  const [recentBounties, setRecentBounties] = useState<Bounty[]>([])
+  const [loading, setLoading] = useState(true)
 
-  const stats = [
-    { label: 'Active Bounties', value: '24', icon: Target, color: 'text-blue-500' },
-    { label: 'Total Projects', value: '156', icon: Rocket, color: 'text-green-500' },
-    { label: 'Community Members', value: '2.1K', icon: Users, color: 'text-purple-500' },
-    { label: 'STX Distributed', value: '48.2K', icon: Coins, color: 'text-yellow-500' },
-  ]
-
-  const features = [
-    {
-      icon: Target,
-      title: 'Create Bounties',
-      description: 'Post bounties for specific development tasks and attract skilled contributors to your project.',
-      href: '/create/bounty'
-    },
-    {
-      icon: Rocket,
-      title: 'Launch Projects',
-      description: 'Showcase your project ideas and get milestone-based funding from the community.',
-      href: '/create/project'
-    },
-    {
-      icon: Award,
-      title: 'Apply for Grants',
-      description: 'Get funding for innovative ideas that will boost the Stacks ecosystem.',
-      href: '/grants'
-    },
-    {
-      icon: Lightbulb,
-      title: 'Share Ideas',
-      description: 'Propose innovative concepts and collaborate with the community to bring them to life.',
-      href: '/ideas'
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const [platformStats, bounties] = await Promise.all([
+          fetchPlatformStats(),
+          fetchBounties()
+        ])
+        setStats(platformStats)
+        setRecentBounties(bounties.slice(0, 3))
+      } catch (error) {
+        console.error('Failed to load data:', error)
+      } finally {
+        setLoading(false)
+      }
     }
-  ]
 
-  const recentBounties = [
-    {
-      title: 'Build NFT Marketplace UI',
-      amount: 50,
-      difficulty: 'intermediate',
-      category: 'Frontend'
-    },
-    {
-      title: 'Smart Contract Audit',
-      amount: 100,
-      difficulty: 'advanced',
-      category: 'Security'
-    },
-    {
-      title: 'API Documentation',
-      amount: 25,
-      difficulty: 'beginner',
-      category: 'Docs'
-    }
-  ]
+    loadData()
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-pink-50">
+        <Navigation />
+        <div className="flex items-center justify-center min-h-[70vh]">
+          <div className="text-center">
+            <div className="relative">
+              <div className="animate-spin rounded-full h-32 w-32 border-4 border-gray-200 border-t-[#fc6431] mx-auto"></div>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <Zap className="h-8 w-8 text-[#fc6431] animate-pulse" />
+              </div>
+            </div>
+            <p className="mt-6 text-gray-600 font-medium">Loading StackUp platform...</p>
+            <p className="text-sm text-gray-500">Powered by Stacks Blockchain</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-pink-50">
       <Navigation />
-      
-      {/* Hero Section */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-primary/5 via-background to-secondary/5">
-        <div className="container mx-auto max-w-7xl px-4 py-24">
-          <div className="text-center space-y-8">
-            <div className="space-y-4">
-              <Badge variant="outline" className="text-sm px-4 py-2">
-                <Zap className="h-4 w-4 mr-2" />
-                Powered by Stacks Blockchain
-              </Badge>
-              <h1 className="text-4xl md:text-6xl font-bold tracking-tight">
-                Boost the{' '}
-                <span className="bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">
-                  Stacks Ecosystem
-                </span>
-              </h1>
-              <p className="text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-                Connect builders, creators, and stakeholders through bounties, projects, grants, and innovative ideas. 
-                Get paid in STX for contributing to the decentralized web.
-              </p>
+      <main>
+        <HeroSection />
+
+        {/* Recent Bounties Section */}
+        <section className="py-24 bg-white/50 backdrop-blur-sm">
+          <div className="container mx-auto max-w-7xl px-4">
+            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-16 gap-6">
+              <div>
+                <h2 className="text-4xl font-bold mb-4 text-gray-900">Latest Opportunities</h2>
+                <p className="text-lg text-gray-600">Fresh bounties from the community</p>
+              </div>
+              <Button asChild variant="outline" size="lg" className="border-[#fc6431]/20 hover:bg-[#fc6431] hover:text-white hover:border-[#fc6431] transition-all duration-300">
+                <Link href="/bounties" className="flex items-center">
+                  View All Bounties <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+              </Button>
             </div>
             
-            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-              {isConnected ? (
-                <div className="flex gap-4">
-                  <Button size="lg" asChild>
-                    <Link href="/bounties">
-                      Explore Bounties
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </Link>
-                  </Button>
-                  <Button size="lg" variant="outline" asChild>
-                    <Link href="/dashboard">
-                      Dashboard
-                    </Link>
-                  </Button>
-                </div>
-              ) : (
-                <div className="flex gap-4">
-                  <Button size="lg" asChild>
-                    <Link href="/bounties">
-                      Get Started
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </Link>
-                  </Button>
-                  <Button size="lg" variant="outline">
-                    Learn More
-                  </Button>
-                </div>
-              )}
-            </div>
-            
-            {isConnected && account && (
-              <Card className="inline-block bg-primary/5 border-primary/20">
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-3 text-sm">
-                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                    <span>Wallet Connected</span>
-                    <Badge variant="secondary">
-                      {(account.balance / 1_000_000).toFixed(2)} STX
-                    </Badge>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </div>
-        </div>
-        
-        {/* Background decoration */}
-        <div className="absolute inset-0 -z-10">
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-primary/5 rounded-full blur-3xl" />
-          <div className="absolute top-1/4 right-1/4 w-[300px] h-[300px] bg-blue-500/5 rounded-full blur-3xl" />
-        </div>
-      </section>
-
-      {/* Stats Section */}
-      <section className="py-16 bg-muted/50">
-        <div className="container mx-auto max-w-7xl px-4">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-            {stats.map((stat, index) => {
-              const Icon = stat.icon
-              return (
-                <div key={index} className="text-center">
-                  <div className="flex justify-center mb-4">
-                    <div className="w-12 h-12 bg-background rounded-full flex items-center justify-center shadow-sm">
-                      <Icon className={`h-6 w-6 ${stat.color}`} />
-                    </div>
-                  </div>
-                  <div className="text-3xl font-bold mb-1">{stat.value}</div>
-                  <div className="text-muted-foreground text-sm">{stat.label}</div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* Features Section */}
-      <section className="py-24">
-        <div className="container mx-auto max-w-7xl px-4">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">
-              How StackUp Works
-            </h2>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Multiple ways to contribute and get rewarded in the Stacks ecosystem
-            </p>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {features.map((feature, index) => {
-              const Icon = feature.icon
-              return (
-                <Card key={index} className="group hover:shadow-lg transition-all duration-300 cursor-pointer">
-                  <CardHeader className="text-center pb-4">
-                    <div className="w-16 h-16 bg-primary/10 rounded-xl flex items-center justify-center mx-auto mb-4 group-hover:bg-primary/20 transition-colors">
-                      <Icon className="h-8 w-8 text-primary" />
-                    </div>
-                    <CardTitle className="text-xl">{feature.title}</CardTitle>
-                  </CardHeader>
-                  <CardContent className="text-center">
-                    <CardDescription className="mb-4">
-                      {feature.description}
-                    </CardDescription>
-                    <Button variant="ghost" size="sm" asChild>
-                      <Link href={feature.href}>
-                        Learn More
-                        <ArrowRight className="ml-1 h-3 w-3" />
-                      </Link>
-                    </Button>
-                  </CardContent>
-                </Card>
-              )
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* Recent Bounties Section */}
-      <section className="py-24 bg-muted/50">
-        <div className="container mx-auto max-w-7xl px-4">
-          <div className="flex justify-between items-center mb-12">
-            <div>
-              <h2 className="text-3xl font-bold mb-4">Latest Bounties</h2>
-              <p className="text-muted-foreground">
-                Discover the newest opportunities to contribute and earn STX
-              </p>
-            </div>
-            <Button variant="outline" asChild>
-              <Link href="/bounties">
-                View All Bounties
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Link>
-            </Button>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {recentBounties.map((bounty, index) => (
-              <Card key={index} className="hover:shadow-md transition-shadow cursor-pointer">
-                <CardHeader>
-                  <div className="flex justify-between items-start">
-                    <CardTitle className="text-lg line-clamp-2">
-                      {bounty.title}
-                    </CardTitle>
-                    <div className="text-right">
-                      <div className="text-lg font-bold text-primary">
-                        {bounty.amount} STX
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {recentBounties.map((bounty) => (
+                <Card key={bounty.id} className="group hover:shadow-xl transition-all duration-300 border-0 bg-white/70 backdrop-blur-sm hover:bg-white/90 hover:scale-105 cursor-pointer">
+                  <CardHeader className="pb-4">
+                    <div className="flex justify-between items-start gap-4">
+                      <CardTitle className="text-lg font-bold line-clamp-2 group-hover:text-[#fc6431] transition-colors">
+                        {bounty.title}
+                      </CardTitle>
+                      <div className="text-right shrink-0">
+                        <div className="text-2xl font-bold text-[#fc6431]">
+                          {bounty.amount}
+                        </div>
+                        <div className="text-sm font-medium text-[#fc6431]">STX</div>
                       </div>
                     </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex justify-between items-center">
-                    <div className="flex gap-2">
-                      <Badge variant="outline" className="text-xs">
-                        {bounty.category}
-                      </Badge>
-                      <Badge variant="secondary" className="text-xs">
-                        {bounty.difficulty}
-                      </Badge>
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    <p className="text-gray-600 text-sm mb-4 line-clamp-2">{bounty.description}</p>
+                    <div className="flex justify-between items-center">
+                      <div className="flex gap-2">
+                        <Badge variant="outline" className="text-xs border-[#fc6431]/20 text-[#fc6431]">
+                          {bounty.category}
+                        </Badge>
+                        <Badge variant="secondary" className="text-xs">
+                          {bounty.difficulty}
+                        </Badge>
+                      </div>
+                      <Button asChild size="sm" className="bg-[#fc6431] hover:bg-[#e55a2b] text-white shadow-md hover:shadow-lg transition-all duration-300">
+                        <Link href={`/bounties/${bounty.id}`}>Apply</Link>
+                      </Button>
                     </div>
-                    <Button size="sm">Apply</Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* CTA Section */}
-      <section className="py-24">
-        <div className="container mx-auto max-w-7xl px-4">
-          <Card className="bg-gradient-to-r from-primary to-blue-600 text-primary-foreground">
-            <CardContent className="p-12 text-center">
-              <h2 className="text-3xl md:text-4xl font-bold mb-4">
-                Ready to Start Building?
+        {/* CTA Section */}
+        <section className="py-24 relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-r from-[#fc6431] via-orange-500 to-purple-600"></div>
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.1),transparent_70%)]"></div>
+          
+          <div className="relative container mx-auto max-w-6xl px-4 text-center">
+            <div className="space-y-8 text-white">
+              <h2 className="text-4xl md:text-6xl font-bold leading-tight">
+                Ready to Shape the Future?
               </h2>
-              <p className="text-xl mb-8 opacity-90 max-w-2xl mx-auto">
-                Join thousands of developers contributing to the Stacks ecosystem. 
-                Create your first bounty or apply to existing ones today.
+              <p className="text-xl md:text-2xl opacity-90 max-w-4xl mx-auto leading-relaxed">
+                Join thousands of innovators building the decentralized web. 
+                Create bounties, launch projects, or contribute your expertise today.
               </p>
-              <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Button size="lg" variant="secondary" asChild>
-                  <Link href="/create/bounty">
-                    Create Bounty
-                    <Target className="ml-2 h-4 w-4" />
+              <div className="flex flex-col sm:flex-row gap-6 justify-center items-center pt-8">
+                <Button asChild size="lg" variant="secondary" className="bg-white text-[#fc6431] hover:bg-gray-100 shadow-xl hover:shadow-2xl transition-all duration-300 group">
+                  <Link href="/create/bounty" className="flex items-center">
+                    Create a Bounty
+                    <Target className="ml-2 h-5 w-5 group-hover:rotate-12 transition-transform" />
                   </Link>
                 </Button>
-                <Button size="lg" variant="outline" className="bg-transparent border-white text-white hover:bg-white hover:text-primary" asChild>
-                  <Link href="/bounties">
-                    Browse Opportunities
-                    <ArrowRight className="ml-2 h-4 w-4" />
+                <Button asChild size="lg" variant="outline" className="border-white/20 text-white hover:bg-white/10 backdrop-blur-sm hover:border-white/40 transition-all duration-300">
+                  <Link href="/projects" className="flex items-center">
+                    Browse Projects
+                    <Rocket className="ml-2 h-5 w-5" />
                   </Link>
                 </Button>
               </div>
-            </CardContent>
-          </Card>
-        </div>
-      </section>
+
+              {isConnected && account && (
+                <div className="mt-12 p-6 bg-white/10 backdrop-blur-sm rounded-2xl border border-white/20 inline-block">
+                  <div className="flex items-center justify-center gap-3">
+                    <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
+                    <p className="text-sm font-medium">
+                      Connected as <span className="font-mono text-orange-200 font-semibold">{account.address.slice(0, 8)}...{account.address.slice(-8)}</span>
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
+      </main>
     </div>
   )
 }
