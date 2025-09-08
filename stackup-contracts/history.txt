@@ -1,0 +1,2 @@
+#V2
+echo "(contract-call? .stackup-grant-escrow create-grant \\"Test\\" \\"Test desc\\" \\"Research\\" u2 none)" | nc -c localhost 20449 &

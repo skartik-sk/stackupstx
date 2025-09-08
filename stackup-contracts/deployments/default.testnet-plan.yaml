@@ -9,24 +9,31 @@ plan:
     - id: 0
       transactions:
         - contract-publish:
-            contract-name: bounty-escrow
+            contract-name: stackup-bounty-escrow
             expected-sender: ST2Z0SKWX6JEAGAB51330CH4NB2RHDBVZME3DC18W
-            cost: 66654746
-            path: contracts/bounty-escrow.clar
+            cost: 72140
+            path: contracts/stackup-bounty-escrow.clar
             anchor-block-only: true
             clarity-version: 3
         - contract-publish:
-            contract-name: milestone-escrow
+            contract-name: stackup-grant-escrow
             expected-sender: ST2Z0SKWX6JEAGAB51330CH4NB2RHDBVZME3DC18W
-            cost: 66835089
-            path: contracts/milestone-escrow.clar
+            cost: 125130
+            path: contracts/stackup-grant-escrow.clar
             anchor-block-only: true
             clarity-version: 3
         - contract-publish:
-            contract-name: participate-stake
+            contract-name: stackup-participation-manager
             expected-sender: ST2Z0SKWX6JEAGAB51330CH4NB2RHDBVZME3DC18W
-            cost: 66799020
-            path: contracts/participate-stake.clar
+            cost: 106480
+            path: contracts/stackup-participation-manager.clar
+            anchor-block-only: true
+            clarity-version: 3
+        - contract-publish:
+            contract-name: stackup-project-escrow
+            expected-sender: ST2Z0SKWX6JEAGAB51330CH4NB2RHDBVZME3DC18W
+            cost: 133330
+            path: contracts/stackup-project-escrow.clar
             anchor-block-only: true
             clarity-version: 3
       epoch: "3.2"

@@ -63,18 +63,23 @@ plan:
     - id: 0
       transactions:
         - emulated-contract-publish:
-            contract-name: bounty-escrow
+            contract-name: stackup-bounty-escrow
             emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
-            path: contracts/bounty-escrow.clar
+            path: contracts/stackup-bounty-escrow.clar
             clarity-version: 3
         - emulated-contract-publish:
-            contract-name: milestone-escrow
+            contract-name: stackup-grant-escrow
             emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
-            path: contracts/milestone-escrow.clar
+            path: contracts/stackup-grant-escrow.clar
             clarity-version: 3
         - emulated-contract-publish:
-            contract-name: participate-stake
+            contract-name: stackup-participation-manager
             emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
-            path: contracts/participate-stake.clar
+            path: contracts/stackup-participation-manager.clar
+            clarity-version: 3
+        - emulated-contract-publish:
+            contract-name: stackup-project-escrow
+            emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
+            path: contracts/stackup-project-escrow.clar
             clarity-version: 3
       epoch: "3.2"

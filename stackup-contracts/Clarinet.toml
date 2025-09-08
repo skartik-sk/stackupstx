@@ -5,20 +5,27 @@ authors = []
 telemetry = true
 cache_dir = './.cache'
 requirements = []
-[contracts.bounty-escrow]
-path = 'contracts/bounty-escrow.clar'
+
+[contracts.stackup-bounty-escrow]
+path = 'contracts/stackup-bounty-escrow.clar'
 clarity_version = 3
 epoch = '3.2'
 
-[contracts.milestone-escrow]
-path = 'contracts/milestone-escrow.clar'
+[contracts.stackup-grant-escrow]
+path = 'contracts/stackup-grant-escrow.clar'
 clarity_version = 3
 epoch = '3.2'
 
-[contracts.participate-stake]
-path = 'contracts/participate-stake.clar'
+[contracts.stackup-participation-manager]
+path = 'contracts/stackup-participation-manager.clar'
 clarity_version = 3
-epoch = 'latest'
+epoch = '3.2'
+
+[contracts.stackup-project-escrow]
+path = 'contracts/stackup-project-escrow.clar'
+clarity_version = 3
+epoch = '3.2'
+
 [repl.analysis]
 passes = ['check_checker']
 
