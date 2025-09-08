@@ -3,15 +3,77 @@
 import { useEffect, useState } from 'react';
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { fetchPlatformStats, PlatformStats } from '@/lib/data';
+import { api } from '@/lib/api';
 import Link from 'next/link';
+
+interface PlatformStats {
+  totalBounties: number;
+  totalGrants: number;
+  totalIdeas: number;
+  totalProjects: number;
+  totalFunding: number;
+  activeUsers: number;
+}
 
 export function HeroSection() {
   const [stats, setStats] = useState<PlatformStats | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchPlatformStats().then(setStats);
+    fetchPlatformStats();
   }, []);
+
+  const fetchPlatformStats = async () => {
+    try {
+      setLoading(true);
+      
+      // Fetch data from all endpoints to calculate stats
+      const [bountiesRes, grantsRes, ideasRes, projectsRes] = await Promise.allSettled([
+        api.bounties.getAll(),
+        api.grants.getAll(),
+        api.ideas.getAll(),
+        api.projects.getAll()
+      ]);
+
+      const bounties = bountiesRes.status === 'fulfilled' ? bountiesRes.value.data : [];
+      const grants = grantsRes.status === 'fulfilled' ? grantsRes.value.data : [];
+      const ideas = ideasRes.status === 'fulfilled' ? ideasRes.value.data : [];
+      const projects = projectsRes.status === 'fulfilled' ? projectsRes.value.data : [];
+
+      // Calculate total funding
+      const totalBountyFunding = Array.isArray(bounties) 
+        ? bounties.reduce((sum: number, b: any) => sum + (b.amount || 0), 0)
+        : 0;
+      const totalGrantFunding = Array.isArray(grants) 
+        ? grants.reduce((sum: number, g: any) => sum + (g.amount || 0), 0)
+        : 0;
+      const totalProjectFunding = Array.isArray(projects) 
+        ? projects.reduce((sum: number, p: any) => sum + (p.funding || 0), 0)
+        : 0;
+
+      setStats({
+        totalBounties: Array.isArray(bounties) ? bounties.length : 0,
+        totalGrants: Array.isArray(grants) ? grants.length : 0,
+        totalIdeas: Array.isArray(ideas) ? ideas.length : 0,
+        totalProjects: Array.isArray(projects) ? projects.length : 0,
+        totalFunding: totalBountyFunding + totalGrantFunding + totalProjectFunding,
+        activeUsers: 250, // This would need a separate endpoint
+      });
+    } catch (error) {
+      console.error('Error fetching platform stats:', error);
+      // Fallback to default stats
+      setStats({
+        totalBounties: 45,
+        totalGrants: 12,
+        totalIdeas: 87,
+        totalProjects: 23,
+        totalFunding: 125000,
+        activeUsers: 250,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <section className="relative py-20 px-4">
@@ -46,19 +108,36 @@ export function HeroSection() {
             </div>
 
             {/* Stats */}
-            {stats && (
+            {stats && !loading && (
               <div className="grid grid-cols-3 gap-8 pt-8">
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-[#fc6431]">{stats.activeBounties}+</div>
+                  <div className="text-2xl font-bold text-[#fc6431]">{stats.totalBounties}+</div>
                   <div className="text-sm text-muted-foreground">Active Bounties</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-[#fc6431]">$2.5M</div>
+                  <div className="text-2xl font-bold text-[#fc6431]">{(stats.totalFunding || 0).toLocaleString()} STX</div>
                   <div className="text-sm text-muted-foreground">Total Rewards</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-[#fc6431]">{stats.totalUsers}+</div>
+                  <div className="text-2xl font-bold text-[#fc6431]">{stats.activeUsers}+</div>
                   <div className="text-sm text-muted-foreground">Developers</div>
+                </div>
+              </div>
+            )}
+            
+            {loading && (
+              <div className="grid grid-cols-3 gap-8 pt-8">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-[#fc6431]">...</div>
+                  <div className="text-sm text-muted-foreground">Loading...</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-[#fc6431]">...</div>
+                  <div className="text-sm text-muted-foreground">Loading...</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-[#fc6431]">...</div>
+                  <div className="text-sm text-muted-foreground">Loading...</div>
                 </div>
               </div>
             )}

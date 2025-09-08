@@ -25,7 +25,7 @@ interface Project {
   category?: string;
 }
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://stackup-backend-4a2z9lasp-singupalli-kartiks-projects.vercel.app';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://stackup-backend-omega.vercel.app';
 
 export default function ProjectsPage() {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -115,10 +115,10 @@ export default function ProjectsPage() {
     );
   }
 
-  const totalFunding = projects.reduce((sum, project) => sum + project.fundingGoal, 0);
+  const totalFunding = projects.reduce((sum, project) => sum + (project.fundingGoal || 0), 0);
   const activeProjects = projects.filter(p => p.status === 'active').length;
   const completedProjects = projects.filter(p => p.status === 'completed').length;
-  const totalContributors = projects.reduce((sum, p) => sum + p.contributors, 0);
+  const totalContributors = projects.reduce((sum, p) => sum + (p.contributors || 0), 0);
 
   return (
     <div className="min-h-screen bg-background">
@@ -247,27 +247,27 @@ export default function ProjectsPage() {
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-gray-600">Funding Progress</span>
                         <span className="font-semibold text-[#fc6431]">
-                          {project.fundingGoal > 0 ? Math.round((project.funding / project.fundingGoal) * 100) : 0}%
+                          {(project.fundingGoal || 0) > 0 ? Math.round(((project.funding || 0) / (project.fundingGoal || 1)) * 100) : 0}%
                         </span>
                       </div>
                       <div className="w-full bg-gray-200 rounded-full h-2">
                         <div 
                           className="bg-[#fc6431] h-2 rounded-full transition-all duration-300"
                           style={{ 
-                            width: `${project.fundingGoal > 0 ? Math.min((project.funding / project.fundingGoal) * 100, 100) : 0}%` 
+                            width: `${(project.fundingGoal || 0) > 0 ? Math.min(((project.funding || 0) / (project.fundingGoal || 1)) * 100, 100) : 0}%` 
                           }}
                         ></div>
                       </div>
                       <div className="flex items-center justify-between text-sm text-gray-500">
-                        <span>{project.funding.toLocaleString()} STX</span>
-                        <span>Goal: {project.fundingGoal.toLocaleString()} STX</span>
+                        <span>{(project.funding || 0).toLocaleString()} STX</span>
+                        <span>Goal: {(project.fundingGoal || 0).toLocaleString()} STX</span>
                       </div>
                     </div>
 
                     <div className="flex items-center justify-between text-sm text-gray-500">
                       <div className="flex items-center space-x-2">
                         <Users className="h-4 w-4" />
-                        <span>{project.contributors} contributors</span>
+                        <span>{project.contributors || 0} contributors</span>
                       </div>
                       <div className="flex items-center space-x-2">
                         <Calendar className="h-4 w-4" />

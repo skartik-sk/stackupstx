@@ -24,7 +24,7 @@ interface Bounty {
   applicants?: any[];
 }
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://stackup-backend-4a2z9lasp-singupalli-kartiks-projects.vercel.app';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://stackup-backend-omega.vercel.app';
 
 export default function BountiesPage() {
   const [filter, setFilter] = useState<'all' | 'open' | 'assigned' | 'in-progress' | 'completed' | 'cancelled'>('all');
@@ -151,7 +151,7 @@ export default function BountiesPage() {
     );
   }
 
-  const totalRewards = bounties.reduce((sum, bounty) => sum + bounty.amount, 0);
+  const totalRewards = bounties.reduce((sum, bounty) => sum + (bounty.amount || 0), 0);
   const openBounties = bounties.filter(b => b.status === 'open').length;
   const assignedBounties = bounties.filter(b => b.status === 'assigned').length;
 
@@ -182,7 +182,7 @@ export default function BountiesPage() {
               <div className="text-sm text-muted-foreground">Open Bounties</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-[#fc6431]">{totalRewards.toLocaleString()} STX</div>
+              <div className="text-2xl font-bold text-[#fc6431]">{(totalRewards || 0).toLocaleString()} STX</div>
               <div className="text-sm text-muted-foreground">Total Rewards</div>
             </div>
             <div className="text-center">
@@ -263,7 +263,7 @@ export default function BountiesPage() {
                       </div>
                       <div className="text-right">
                         <div className="text-2xl font-bold text-[#fc6431]">
-                          {bounty.amount.toLocaleString()} STX
+                          {(bounty.amount || 0).toLocaleString()} STX
                         </div>
                         <div className="text-sm text-muted-foreground">Reward</div>
                       </div>

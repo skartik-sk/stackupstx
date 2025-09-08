@@ -14,10 +14,11 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { ArrowLeft, DollarSign, Calendar, Users, Code, Shield, Zap, Wallet } from "lucide-react"
 import Link from "next/link"
 import { useWallet } from "@/contexts/WalletContext"
+import { useBountyContract } from "@/hooks/useContracts"
 import { toast } from "react-hot-toast"
 import { useRouter } from "next/navigation"
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://stackup-backend-4a2z9lasp-singupalli-kartiks-projects.vercel.app';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://stackup-backend-36eb8e6c-singupalli-kartiks-projects.vercel.app';
 
 const skillOptions = [
   "JavaScript",
@@ -47,6 +48,7 @@ const categoryOptions = [
 
 export default function CreateBountyPage() {
   const { isAuthenticated, user, connectWallet } = useWallet()
+  const { createBounty, loading: contractLoading } = useBountyContract()
   const router = useRouter()
 
   const [formData, setFormData] = useState({
@@ -105,6 +107,20 @@ export default function CreateBountyPage() {
     try {
       setCreating(true)
       
+      // Convert deadline to Date object
+      const deadlineDate = new Date(formData.deadline)
+      
+      // Create bounty on smart contract
+      const contractResult = await createBounty({
+        title: formData.title,
+        description: formData.description,
+        amount: Number(formData.amount) * 1000000, // Convert to microSTX
+        deadline: deadlineDate,
+        category: formData.category,
+        requirements: formData.requirements.split('\n').filter(req => req.trim()),
+      })
+
+      // Also save to backend database for search/filtering
       const bountyData = {
         title: formData.title,
         description: formData.description,
@@ -117,6 +133,7 @@ export default function CreateBountyPage() {
         requirements: formData.requirements,
         deliverables: formData.deliverables,
         difficulty: formData.difficulty,
+        contractTxId: (contractResult as any)?.txId, // Link to blockchain transaction
       }
 
       const response = await fetch(`${API_BASE_URL}/api/bounties`, {
@@ -128,11 +145,10 @@ export default function CreateBountyPage() {
       })
 
       if (!response.ok) {
-        throw new Error('Failed to create bounty')
+        console.warn('Failed to save to backend database, but smart contract transaction succeeded')
       }
 
       const newBounty = await response.json()
-      toast.success('Bounty created successfully!')
       router.push(`/bounties/${newBounty.data._id}`)
     } catch (error) {
       console.error('Error creating bounty:', error)
@@ -502,9 +518,9 @@ export default function CreateBountyPage() {
               <Button 
                 type="submit" 
                 className="bg-[#fc6431] hover:bg-[#e55a2b] text-white"
-                disabled={!isAuthenticated || creating}
+                disabled={!isAuthenticated || creating || contractLoading}
               >
-                {creating ? 'Creating Bounty...' : 'Create Bounty'}
+                {creating || contractLoading ? 'Creating Bounty...' : 'Create Bounty'}
               </Button>
             )}
           </div>

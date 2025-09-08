@@ -25,7 +25,7 @@ interface Grant {
   createdAt: string;
 }
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://stackup-backend-4a2z9lasp-singupalli-kartiks-projects.vercel.app';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://stackup-backend-omega.vercel.app';
 
 export default function GrantsPage() {
   const [grants, setGrants] = useState<Grant[]>([]);
@@ -151,7 +151,7 @@ export default function GrantsPage() {
     );
   }
 
-  const totalFunding = grants.reduce((sum, grant) => sum + grant.amount, 0);
+  const totalFunding = grants.reduce((sum, grant) => sum + (grant.amount || 0), 0);
   const openGrants = grants.filter(g => g.status === 'open').length;
   const underReviewGrants = grants.filter(g => g.status === 'under-review').length;
   const totalApplicants = grants.reduce((sum, g) => sum + (g.applicants?.length || 0), 0);
@@ -274,7 +274,7 @@ export default function GrantsPage() {
                       <div className="flex items-center justify-between">
                         <span className="text-sm font-medium text-gray-600">Grant Amount</span>
                         <span className="text-lg font-bold text-[#fc6431]">
-                          {grant.amount.toLocaleString()} STX
+                          {(grant.amount || 0).toLocaleString()} STX
                         </span>
                       </div>
                       

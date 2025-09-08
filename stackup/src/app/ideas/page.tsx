@@ -25,7 +25,7 @@ interface Idea {
   votedUsers?: string[];
 }
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://stackup-backend-4a2z9lasp-singupalli-kartiks-projects.vercel.app';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://stackup-backend-omega.vercel.app';
 
 export default function IdeasPage() {
   const [ideas, setIdeas] = useState<Idea[]>([]);
@@ -150,7 +150,7 @@ export default function IdeasPage() {
     );
   }
 
-  const totalVotes = ideas.reduce((sum, idea) => sum + idea.votes, 0);
+  const totalVotes = ideas.reduce((sum, idea) => sum + (idea.votes || 0), 0);
   const fundedIdeas = ideas.filter(i => i.status === 'funded' || i.status === 'in-development').length;
   const developmentIdeas = ideas.filter(i => i.status === 'in-development').length;
 
@@ -283,7 +283,7 @@ export default function IdeasPage() {
                       <div className="flex items-center space-x-4 text-sm text-gray-500">
                         <div className="flex items-center space-x-1">
                           <Heart className="h-4 w-4 text-red-500" />
-                          <span className="font-medium text-[#fc6431]">{idea.votes}</span>
+                          <span className="font-medium text-[#fc6431]">{idea.votes || 0}</span>
                           <span>votes</span>
                         </div>
                         <div className="flex items-center space-x-1">
@@ -299,7 +299,7 @@ export default function IdeasPage() {
                         <DollarSign className="h-4 w-4 text-[#fc6431]" />
                         <span className="text-gray-600">Est. Budget:</span>
                         <span className="font-semibold text-[#fc6431]">
-                          {idea.estimatedBudget.toLocaleString()} STX
+                          {(idea.estimatedBudget || 0).toLocaleString()} STX
                         </span>
                       </div>
                     )}

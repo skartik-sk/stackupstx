@@ -17,7 +17,7 @@ import { useWallet } from "@/contexts/WalletContext"
 import { toast } from "react-hot-toast"
 import { useRouter } from "next/navigation"
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://stackup-backend-4a2z9lasp-singupalli-kartiks-projects.vercel.app';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://stackup-backend-36eb8e6c-singupalli-kartiks-projects.vercel.app';
 
 const grantTypeOptions = [
   { value: "research", label: "Research Grant", description: "For academic research and studies" },
