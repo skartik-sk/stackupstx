@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { useWallet } from "@/contexts/WalletContext"
+import { useWallet } from "@/contexts/WalletContextNew"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -84,7 +84,7 @@ export default function ProfilePage() {
               <div className="mb-4">
                 <h3 className="text-sm font-medium mb-2">Skills</h3>
                 <div className="flex flex-wrap gap-2">
-                  {user.profileData.skills.map((skill) => (
+                  {user.profileData.skills.map((skill: string) => (
                     <Badge key={skill} variant="outline" className="text-xs">
                       {skill}
                     </Badge>

@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useWallet } from '@/contexts/WalletContext';
+import { useWallet } from '@/contexts/WalletContextNew';
 import Link from 'next/link';
 import { Search, Users, Calendar, DollarSign, TrendingUp } from 'lucide-react';
 import { toast } from 'react-hot-toast';
@@ -34,7 +34,7 @@ export default function ProjectsPage() {
   const [filter, setFilter] = useState<'all' | 'active' | 'completed' | 'planning'>('all');
   const [searchTerm, setSearchTerm] = useState('');
   
-  const { isAuthenticated, user } = useWallet();
+
 
   // Fetch projects from backend
   const fetchProjects = async () => {
@@ -277,7 +277,7 @@ export default function ProjectsPage() {
 
                     <div className="pt-2 border-t border-gray-100">
                       <div className="flex items-center justify-between text-sm text-gray-500 mb-3">
-                        <span>By {project.creator.slice(0, 8)}...</span>
+                        {project.creator ? project.creator.slice(0, 8) : ''}...
                       </div>
                       
                       <Button asChild className="w-full bg-[#fc6431] hover:bg-[#e55a2b] text-white">

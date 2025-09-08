@@ -13,11 +13,12 @@ import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
 import { ArrowLeft, Building, DollarSign, Calendar, Award, Wallet } from "lucide-react"
 import Link from "next/link"
-import { useWallet } from "@/contexts/WalletContext"
+import { useWallet } from "@/contexts/WalletContextNew"
+import { useParticipateContract } from "@/hooks/useContracts"
 import { toast } from "react-hot-toast"
 import { useRouter } from "next/navigation"
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://stackup-backend-36eb8e6c-singupalli-kartiks-projects.vercel.app';
+const API_BASE_URL = 'https://stackup-backend-omega.vercel.app';
 
 const grantTypeOptions = [
   { value: "research", label: "Research Grant", description: "For academic research and studies" },
@@ -55,6 +56,7 @@ const eligibilityOptions = [
 
 export default function CreateGrantPage() {
   const { isAuthenticated, user, connectWallet } = useWallet()
+  const { stakeForParticipation, loading: stakingLoading } = useParticipateContract()
   const router = useRouter()
   const [creating, setCreating] = useState(false)
 
@@ -112,6 +114,22 @@ export default function CreateGrantPage() {
     try {
       setCreating(true)
       
+      // Optional: Stake STX for grant reputation
+      let stakeTxId = null;
+      if (formData.amount && Number(formData.amount) > 1000) { // For large grants, stake 10 STX
+        try {
+          const stakeResult = await stakeForParticipation({
+            amount: 10 * 1000000, // 10 STX in microSTX
+            duration: 2016, // ~2 weeks in blocks
+          });
+          stakeTxId = (stakeResult as any)?.txId;
+          toast.success('Staked STX for grant reputation!');
+        } catch (stakeError) {
+          console.warn('Staking failed, proceeding with grant creation:', stakeError);
+          toast.error('Staking failed, but proceeding with grant creation');
+        }
+      }
+      
       const grantData = {
         title: formData.title,
         description: formData.description,
@@ -132,6 +150,7 @@ export default function CreateGrantPage() {
         contactEmail: formData.contactEmail,
         website: formData.website,
         additionalInfo: formData.additionalInfo,
+        stakeTxId, // Include stake transaction ID
       }
 
       const response = await fetch(`${API_BASE_URL}/api/grants`, {

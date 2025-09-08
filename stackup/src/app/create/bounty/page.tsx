@@ -13,10 +13,10 @@ import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
 import { ArrowLeft, DollarSign, Calendar, Users, Code, Shield, Zap, Wallet } from "lucide-react"
 import Link from "next/link"
-import { useWallet } from "@/contexts/WalletContext"
+import { useWallet } from "@/contexts/WalletContextNew"
 import { useBountyContract } from "@/hooks/useContracts"
-import { toast } from "react-hot-toast"
 import { useRouter } from "next/navigation"
+import { toast } from "react-hot-toast"
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://stackup-backend-36eb8e6c-singupalli-kartiks-projects.vercel.app';
 
@@ -47,7 +47,7 @@ const categoryOptions = [
 ]
 
 export default function CreateBountyPage() {
-  const { isAuthenticated, user, connectWallet } = useWallet()
+  const { isConnected, userAddress, connectWallet } = useWallet()
   const { createBounty, loading: contractLoading } = useBountyContract()
   const router = useRouter()
 
@@ -94,7 +94,7 @@ export default function CreateBountyPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!isAuthenticated || !user) {
+    if (!isConnected || !userAddress) {
       toast.error('Please connect your wallet first')
       return
     }
@@ -110,22 +110,32 @@ export default function CreateBountyPage() {
       // Convert deadline to Date object
       const deadlineDate = new Date(formData.deadline)
       
-      // Create bounty on smart contract
+      // Step 1: Create bounty on smart contract first
+      toast.loading('Creating bounty escrow on blockchain...', { id: 'bounty-creation' })
+      
       const contractResult = await createBounty({
         title: formData.title,
         description: formData.description,
-        amount: Number(formData.amount) * 1000000, // Convert to microSTX
+        amount: Number(formData.amount),
         deadline: deadlineDate,
         category: formData.category,
         requirements: formData.requirements.split('\n').filter(req => req.trim()),
       })
 
-      // Also save to backend database for search/filtering
+      if (!contractResult.success || !contractResult.txId) {
+        throw new Error('Smart contract transaction failed')
+      }
+
+      toast.success('Smart contract transaction submitted!', { id: 'bounty-creation' })
+
+      // Step 2: Save to database with transaction reference
+      toast.loading('Saving bounty to database...', { id: 'bounty-creation' })
+      
       const bountyData = {
         title: formData.title,
         description: formData.description,
         amount: Number(formData.amount),
-        creator: user.stxAddress,
+        creator: userAddress,
         deadline: formData.deadline,
         status: 'open',
         category: formData.category,
@@ -133,7 +143,8 @@ export default function CreateBountyPage() {
         requirements: formData.requirements,
         deliverables: formData.deliverables,
         difficulty: formData.difficulty,
-        contractTxId: (contractResult as any)?.txId, // Link to blockchain transaction
+        contractTxId: contractResult.txId, // Link to blockchain transaction
+        contractAddress: process.env.NEXT_PUBLIC_BOUNTY_CONTRACT,
       }
 
       const response = await fetch(`${API_BASE_URL}/api/bounties`, {
@@ -145,21 +156,34 @@ export default function CreateBountyPage() {
       })
 
       if (!response.ok) {
-        console.warn('Failed to save to backend database, but smart contract transaction succeeded')
+        throw new Error('Failed to save bounty to database')
       }
 
+      toast.success('Bounty created successfully!', { id: 'bounty-creation' })
+      
       const newBounty = await response.json()
       router.push(`/bounties/${newBounty.data._id}`)
-    } catch (error) {
+      
+    } catch (error: any) {
       console.error('Error creating bounty:', error)
-      toast.error('Failed to create bounty. Please try again.')
+      
+      // Provide specific error messages
+      if (error.message?.includes('cancelled')) {
+        toast.error('Transaction cancelled by user', { id: 'bounty-creation' })
+      } else if (error.message?.includes('Smart contract')) {
+        toast.error('Smart contract transaction failed. Please try again.', { id: 'bounty-creation' })
+      } else if (error.message?.includes('database')) {
+        toast.error('Blockchain transaction succeeded but database save failed. Contact support.', { id: 'bounty-creation' })
+      } else {
+        toast.error('Failed to create bounty. Please try again.', { id: 'bounty-creation' })
+      }
     } finally {
       setCreating(false)
     }
   }
 
-  const nextStep = () => setCurrentStep((prev) => Math.min(prev + 1, totalSteps))
-  const prevStep = () => setCurrentStep((prev) => Math.max(prev - 1, 1))
+  const nextStep = () => setCurrentStep((prev: number) => Math.min(prev + 1, totalSteps))
+  const prevStep = () => setCurrentStep((prev: number) => Math.max(prev - 1, 1))
 
   return (
     <div className="min-h-screen bg-background">
@@ -203,7 +227,7 @@ export default function CreateBountyPage() {
 
         <form onSubmit={handleSubmit} className="max-w-4xl">
           {/* Wallet Connection Check */}
-          {!isAuthenticated && (
+          {!isConnected && (
             <Card className="mb-6 border-orange-200 bg-orange-50">
               <CardContent className="p-6">
                 <div className="flex items-center gap-4">
@@ -227,13 +251,13 @@ export default function CreateBountyPage() {
           )}
 
           {/* Connected Wallet Info */}
-          {isAuthenticated && user && (
+          {isConnected && userAddress && (
             <Card className="mb-6 border-green-200 bg-green-50">
               <CardContent className="p-4">
                 <div className="flex items-center gap-3">
                   <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                   <span className="text-green-800 text-sm font-medium">
-                    Connected as: {user.stxAddress}
+                    Connected as: {userAddress}
                   </span>
                 </div>
               </CardContent>
@@ -509,7 +533,7 @@ export default function CreateBountyPage() {
               <Button 
                 type="button" 
                 onClick={nextStep} 
-                disabled={!isAuthenticated}
+                disabled={!isConnected}
                 className="bg-[#fc6431] hover:bg-[#e55a2b] text-white"
               >
                 Next
@@ -518,7 +542,7 @@ export default function CreateBountyPage() {
               <Button 
                 type="submit" 
                 className="bg-[#fc6431] hover:bg-[#e55a2b] text-white"
-                disabled={!isAuthenticated || creating || contractLoading}
+                disabled={!isConnected || creating || contractLoading}
               >
                 {creating || contractLoading ? 'Creating Bounty...' : 'Create Bounty'}
               </Button>

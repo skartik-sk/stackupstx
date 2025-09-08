@@ -1,13 +1,22 @@
+"use client";
 import { Navigation } from "@/components/navigation";
-import { HeroSection } from "@/components/hero-section";
+import { ExecutiveSummary } from "@/components/landing/ExecutiveSummary";
+import { ProblemSection } from "@/components/landing/ProblemSection";
+import { SolutionSection } from "@/components/landing/SolutionSection";
+import { FeaturesSection } from "@/components/landing/FeaturesSection";
+import { Footer } from "@/components/landing/Footer";
 
 export default function Home() {
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
       <main>
-        <HeroSection />
+        <ExecutiveSummary />
+        <ProblemSection />
+        <SolutionSection />
+        <FeaturesSection />
       </main>
+      <Footer />
     </div>
   );
 }

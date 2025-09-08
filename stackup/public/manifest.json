@@ -1,0 +1,12 @@
+{
+  "name": "StackUp",
+  "start_url": "/",
+  "description": "A decentralized platform for bounties, grants, and project collaboration on Stacks blockchain",
+  "icons": [
+    {
+      "src": "/next.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

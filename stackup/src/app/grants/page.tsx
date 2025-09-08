@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useWallet } from '@/contexts/WalletContext';
+import { useWallet } from '@/contexts/WalletContextNew';
 import Link from 'next/link';
 import { Search, Building, Calendar, DollarSign, Users } from 'lucide-react';
 import { toast } from 'react-hot-toast';

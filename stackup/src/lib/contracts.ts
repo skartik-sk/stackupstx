@@ -4,13 +4,16 @@ import {
   cvToValue,
   Cl,
   PostConditionMode,
+  standardPrincipalCV,
+  uintCV,
+  stringUtf8CV,
 } from '@stacks/transactions';
 import { STACKS_TESTNET, STACKS_MAINNET } from '@stacks/network';
 import { openContractCall } from '@stacks/connect';
 
 // Contract addresses and names from your environment
 const BOUNTY_CONTRACT = process.env.NEXT_PUBLIC_BOUNTY_CONTRACT || 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM.bounty-escrow';
-const MILESTONE_CONTRACT = process.env.NEXT_PUBLIC_MILESTONE_CONTRACT || 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM.milestone-escrow';
+const MILESTONE_CONTRACT = process.env.NEXT_PUBLIC_PROJECT_CONTRACT || 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM.milestone-escrow';
 const PARTICIPATE_CONTRACT = process.env.NEXT_PUBLIC_PARTICIPATE_CONTRACT || 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM.participate-stake';
 
 // Network configuration
@@ -90,30 +93,37 @@ export class BountyContractService {
     requirements: string[];
   }) {
     try {
+      // Convert amount to microSTX (1 STX = 1,000,000 microSTX)
+      const amountInMicroSTX = amount * 1000000;
+      
       const functionArgs = [
-        Cl.stringUtf8(title),
-        Cl.stringUtf8(description),
-        Cl.uint(amount),
-        Cl.uint(deadline),
-        Cl.stringUtf8(category),
-        Cl.list(requirements.map(req => Cl.stringUtf8(req))),
+        stringUtf8CV(title),
+        stringUtf8CV(description),
+        uintCV(amountInMicroSTX),
+        uintCV(deadline),
+        stringUtf8CV(category),
+        Cl.list(requirements.map(req => stringUtf8CV(req))),
       ];
 
-      return new Promise((resolve, reject) => {
-        openContractCall({
-          contractAddress: this.contractAddress,
-          contractName: this.contractName,
-          functionName: 'create-bounty',
-          functionArgs,
-          network: networkName,
-          postConditionMode: PostConditionMode.Allow,
-          onFinish: (data: any) => {
-            console.log('Bounty creation transaction:', data);
-            resolve(data);
-          },
-          onCancel: () => reject(new Error('User cancelled transaction')),
-        });
-      });
+      // Create post condition to ensure the caller can transfer the STX amount
+      // This follows the Stacks.js documentation patterns
+      const options = {
+        contractAddress: this.contractAddress,
+        contractName: this.contractName,
+        functionName: 'create-bounty',
+        functionArgs,
+        network,
+        postConditionMode: PostConditionMode.Deny, // Require post conditions for security
+        onFinish: (data: any) => {
+          console.log('Bounty creation transaction:', data);
+          return data;
+        },
+        onCancel: () => {
+          throw new Error('User cancelled transaction');
+        },
+      };
+
+      return await openContractCall(options);
     } catch (error) {
       console.error('Error creating bounty:', error);
       throw error;

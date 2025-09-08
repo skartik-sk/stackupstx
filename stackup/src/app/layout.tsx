@@ -6,7 +6,7 @@ import { Analytics } from "@vercel/analytics/next"
 import { Suspense } from "react"
 import { AuthProvider } from "@/components/auth/auth-provider"
 import { StacksProvider } from "@/providers/StacksProvider"
-import { WalletProvider } from "@/contexts/WalletContext"
+import { WalletProvider } from "@/contexts/WalletContextNew"
 import { Toaster } from "react-hot-toast"
 import "./globals.css"
 

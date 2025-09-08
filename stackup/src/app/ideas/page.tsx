@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useWallet } from '@/contexts/WalletContext';
+import { useWallet } from '@/contexts/WalletContextNew';
 import Link from 'next/link';
 import { Search, Lightbulb, TrendingUp, Heart, Calendar, DollarSign } from 'lucide-react';
 import { toast } from 'react-hot-toast';
@@ -306,7 +306,7 @@ export default function IdeasPage() {
 
                     <div className="flex items-center justify-between text-sm text-gray-500">
                       <div className="flex items-center space-x-2">
-                        <span>By {idea.creator.slice(0, 8)}...</span>
+                        {idea.creator?.slice(0, 8) ?? ''}...
                       </div>
                       <div className="flex items-center space-x-2">
                         <Calendar className="h-4 w-4" />

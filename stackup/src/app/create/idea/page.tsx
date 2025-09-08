@@ -13,11 +13,12 @@ import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
 import { ArrowLeft, Sparkles, Brain, Target, Users, Lightbulb, TrendingUp, Shield, Wallet } from "lucide-react"
 import Link from "next/link"
-import { useWallet } from "@/contexts/WalletContext"
+import { useWallet } from "@/contexts/WalletContextNew"
+import { useParticipateContract } from "@/hooks/useContracts"
 import { toast } from "react-hot-toast"
 import { useRouter } from "next/navigation"
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://stackup-backend-36eb8e6c-singupalli-kartiks-projects.vercel.app';
+const API_BASE_URL = 'https://stackup-backend-omega.vercel.app';
 
 const categoryOptions = [
   { value: "defi", label: "DeFi & Finance", icon: TrendingUp },
@@ -51,6 +52,7 @@ const implementationTimeOptions = [
 
 export default function CreateIdeaPage() {
   const { isAuthenticated, user, connectWallet } = useWallet()
+  const { stakeForParticipation, loading: stakingLoading } = useParticipateContract()
   const router = useRouter()
   
   const [creating, setCreating] = useState(false)
@@ -100,6 +102,20 @@ export default function CreateIdeaPage() {
     try {
       setCreating(true)
       
+      // Optional: Stake STX for idea credibility (small amount)
+      let stakeTxId = null;
+      try {
+        const stakeResult = await stakeForParticipation({
+          amount: 1 * 1000000, // 1 STX in microSTX for idea reputation
+          duration: 1008, // ~1 week in blocks
+        });
+        stakeTxId = (stakeResult as any)?.txId;
+        toast.success('Staked STX for idea credibility!');
+      } catch (stakeError) {
+        console.warn('Staking failed, proceeding with idea creation:', stakeError);
+        // Don't show error for optional staking
+      }
+      
       const ideaData = {
         title: formData.title,
         description: formData.description,
@@ -114,6 +130,7 @@ export default function CreateIdeaPage() {
         tags: [...formData.targetAudience, formData.category].filter(Boolean),
         status: 'idea',
         votes: 0,
+        stakeTxId, // Include stake transaction ID
       }
 
       const response = await fetch(`${API_BASE_URL}/api/ideas`, {
